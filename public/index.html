@@ -2,8 +2,9 @@
 <html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#090a0b"><title>Abhi Music — Listen your way</title>
-<link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/abhi-music-v9.css">
+<link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/abhi-music-v10.css">
 </head><body>
+<div class="welcome-screen" id="welcomeScreen"><div class="welcome-orbit"><span>A</span><i></i></div><p>WELCOME TO</p><h1>Abhi Music<span>.</span></h1><small>MADE WITH ♥ BY ABHISHEK</small></div>
 <div class="noise"></div>
 <div class="app">
   <aside class="sidebar">
@@ -18,6 +19,7 @@
       <button class="text-nav" data-page="liked"><span class="mini-heart">♥</span> Liked Songs <em id="likedCount">0</em></button>
       <button class="text-nav" data-page="recent"><span class="mini-clock">↻</span> Recently Played</button>
       <button class="text-nav" data-page="stats"><span class="mini-stats">▥</span> Listening Stats</button>
+      <button class="text-nav" data-page="background"><span class="mini-bg">∞</span> Background Mix <em>NEW</em></button>
       <div id="customPlaylists"></div>
     </nav>
     <div class="sidebar-card">
@@ -31,6 +33,7 @@
       <button class="mobile-menu" id="menuBtn" aria-label="Menu"><span data-icon="menu"></span></button>
       <div class="history-buttons"><button id="backBtn">‹</button><button>›</button></div>
       <div class="search-wrap"><span data-icon="search"></span><input id="searchInput" autocomplete="off" placeholder="Search artists, songs, albums..."><kbd>⌘ K</kbd><button id="clearSearch" class="clear">×</button></div>
+      <div class="live-clock" id="liveClock"><b>00:00</b><span>—</span></div>
       <div class="top-actions"><button class="ghost ai-dj active" id="aiDjBtn"><span>✦</span> AI DJ on</button><button class="ghost" id="surpriseBtn"><span>↝</span> Surprise me</button><button class="icon-button" id="themeBtn" title="Change accent"><span data-icon="sun"></span></button><div class="top-avatar">A</div></div>
     </header>
 
@@ -64,6 +67,7 @@
         <div class="stats-layout"><article class="chart-card"><div class="section-head"><div><span class="eyebrow">LAST 7 DAYS</span><h2>Your listening rhythm</h2></div></div><div class="week-chart" id="weekChart"></div></article><article class="top-card"><span class="eyebrow">TOP ARTISTS</span><h2>On repeat</h2><div id="topArtists"></div></article></div>
         <div class="stats-footer"><span>Stats stay private on this device.</span><button id="resetStats">Reset statistics</button></div>
       </section>
+      <section id="backgroundPage" class="page"><div class="page-title"><span class="eyebrow">TRUE BACKGROUND AUDIO</span><h1>Keep listening, <i>screen off.</i></h1><p class="page-intro">These Creative Commons tracks and your own audio files use direct playback, so supported phones can continue with the tab minimized or screen locked.</p></div><div class="bg-hero"><div><span class="bg-pulse">∞</span><span class="eyebrow">BACKGROUND MODE</span><h2>Music that stays with you.</h2><p>Use lock-screen controls, notification controls and the sleep timer. No video window required.</p><button id="playBgMix"><span data-icon="play"></span> Play free mix</button></div><div class="bg-rings"><i></i><i></i><i></i><b>A</b></div></div><div class="upload-zone" id="uploadZone"><input type="file" id="localFiles" accept="audio/*" multiple hidden><div><span>＋</span><h3>Add your own music</h3><p>Choose MP3, M4A, WAV or OGG files from your phone. Files stay on your device.</p></div><button id="chooseFiles">Choose audio files</button></div><div class="section-head bg-head"><div><span class="eyebrow">CREATIVE COMMONS COLLECTION</span><h2>Abhi's background mix</h2></div><span class="license-note">LEGAL FULL TRACKS · INTERNET ARCHIVE</span></div><div class="track-table" id="backgroundList"></div></section>
     </div>
   </main>
 
@@ -83,9 +87,10 @@
   <div class="full-progress" id="fullProgress"><div id="fullProgressFill"><i></i></div></div>
   <div class="full-times"><span id="fullCurrent">0:00</span><span id="fullDuration">0:00</span></div>
   <div class="full-controls"><button id="fullShuffle"><span data-icon="shuffle"></span></button><button id="fullPrev"><span data-icon="previous"></span></button><button class="full-play" id="fullPlay"><span data-icon="play"></span></button><button id="fullNext"><span data-icon="next"></span></button><button id="fullRepeat"><span data-icon="repeat"></span></button></div>
-  <div class="full-bottom"><span data-icon="volume"></span><div class="full-volume" id="fullVolume"><div id="fullVolumeFill"></div></div><button id="fullLyrics"><b>≋</b> Lyrics</button><button id="fullAi" class="active"><b>✦</b> AI DJ</button><button id="fullQueue"><span data-icon="queue"></span> Queue</button></div>
+  <div class="full-bottom"><span data-icon="volume"></span><div class="full-volume" id="fullVolume"><div id="fullVolumeFill"></div></div><button id="fullLyrics"><b>≋</b> Lyrics</button><button id="sleepBtn"><b>◷</b> Timer</button><button id="fullAi" class="active"><b>✦</b> AI DJ</button><button id="fullQueue"><span data-icon="queue"></span> Queue</button></div>
 </section>
+<div class="sleep-modal" id="sleepModal"><div class="sleep-card"><button class="sleep-close" id="sleepClose">×</button><span class="sleep-moon">◒</span><span class="eyebrow">SLEEP TIMER</span><h2>Drift off with music</h2><p id="sleepStatus">Choose when Abhi Music should pause.</p><div class="timer-grid"><button data-minutes="15"><b>15</b><small>minutes</small></button><button data-minutes="30"><b>30</b><small>minutes</small></button><button data-minutes="45"><b>45</b><small>minutes</small></button><button data-minutes="60"><b>60</b><small>minutes</small></button></div><button class="end-track" id="endTrackTimer">Stop at end of song</button><button class="cancel-timer" id="cancelTimer">Cancel active timer</button></div></div>
 <aside class="lyrics-sheet" id="lyricsSheet"><header><div><span class="eyebrow">LIVE LYRICS</span><h3 id="lyricsTitle">Lyrics</h3></div><button id="closeLyrics">×</button></header><div class="lyrics-body" id="lyricsBody"><div class="lyrics-empty">Choose a song to see its lyrics.</div></div><footer><span>Lyrics provided by LRCLIB</span><button id="lyricsExternal">Open song ↗</button></footer></aside>
 <div class="video-dock" id="videoDock"><div class="video-dock-label"><span>NOW PLAYING · OFFICIAL VIDEO</span><button id="videoStop" aria-label="Close video">×</button></div><div id="youtubePlayer"></div></div>
 <div class="toast" id="toast"></div><div class="mobile-overlay" id="overlay"></div><audio id="audio" preload="metadata"></audio>
-<script src="https://www.youtube.com/iframe_api"></script><script src="/abhi-music-v9.js"></script></body></html>
+<script src="https://www.youtube.com/iframe_api"></script><script src="/abhi-music-v10.js"></script></body></html>
