@@ -2,12 +2,12 @@
 <html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#090a0b"><title>Abhi Music — Listen your way</title>
-<link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/abhi-music-v8.css">
+<link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/abhi-music-v9.css">
 </head><body>
 <div class="noise"></div>
 <div class="app">
   <aside class="sidebar">
-    <a class="brand" href="#" data-page="home" aria-label="Abhi Music home"><span class="brand-mark">A</span><span>abhi<span class="brand-dot">.</span></span></a>
+    <a class="brand" href="#" data-page="home" aria-label="Abhi Music home"><span class="brand-mark">A</span><span>abhi<span class="brand-dot">.</span><small>BY ABHISHEK</small></span></a>
     <nav class="main-nav">
       <button class="nav-item active" data-page="home"><span data-icon="home"></span><b>Home</b></button>
       <button class="nav-item" data-page="search"><span data-icon="search"></span><b>Discover</b></button>
@@ -23,7 +23,7 @@
     <div class="sidebar-card">
       <span class="spark">✦</span><div><b>Your soundtrack,<br>beautifully simple.</b><small>Free previews. Zero sign-up.</small></div>
     </div>
-    <div class="profile"><div class="avatar">A</div><div><b>Music lover</b><small>Free listener</small></div><button>•••</button></div>
+    <div class="profile"><div class="avatar">A</div><div><b>Abhishek</b><small>Creator · Abhi Music</small></div><a class="profile-chat" href="https://wa.me/918219287056?text=Hi%20Abhishek%2C%20I%20like%20Abhi%20Music!" target="_blank" title="Message Abhishek">↗</a></div>
   </aside>
 
   <main class="main">
@@ -52,6 +52,8 @@
         </section>
         <section class="section"><div class="section-head"><div><span class="eyebrow">WHAT'S HOT</span><h2>Trending right now</h2></div><button class="view-all" data-open="search">See all <span>→</span></button></div><div class="track-table" id="trendingList"></div></section>
         <section class="section"><div class="section-head"><div><span class="eyebrow">THE PUNJAB EDIT</span><h2>Sounds of Punjab</h2></div></div><div class="album-row" id="punjabiRow"></div></section>
+        <section class="creator-section"><div class="quote-mark">“</div><div><span class="eyebrow">A NOTE FROM THE CREATOR</span><blockquote id="musicQuote">Music is the shorthand of emotion.</blockquote><p id="quoteAuthor">— Leo Tolstoy</p></div><div class="creator-cta"><span>BUILT WITH ♥ IN PUNJAB</span><b>Abhishek</b><p>Enjoying Abhi Music? I’d love to hear from you.</p><a href="https://wa.me/918219287056?text=Hi%20Abhishek%2C%20I%20like%20Abhi%20Music!" target="_blank">Message Abhishek <i>↗</i></a></div></section>
+        <footer class="site-signature"><span>ABHI MUSIC © 2026</span><b>Designed & built by Abhishek</b><span>LUDHIANA · PUNJAB</span></footer>
       </section>
 
       <section id="searchPage" class="page"><div class="page-title"><span class="eyebrow">FIND YOUR NEXT FAVOURITE</span><h1>Discover <i>something new.</i></h1></div><div id="searchEmpty"><h3>Browse every mood</h3><div class="genre-grid"></div></div><div id="searchResults" class="hidden"><div class="results-head"><h2>Results for “<span id="queryLabel"></span>”</h2><span id="resultCount"></span></div><div class="track-table" id="resultsList"></div></div></section>
@@ -84,6 +86,6 @@
   <div class="full-bottom"><span data-icon="volume"></span><div class="full-volume" id="fullVolume"><div id="fullVolumeFill"></div></div><button id="fullLyrics"><b>≋</b> Lyrics</button><button id="fullAi" class="active"><b>✦</b> AI DJ</button><button id="fullQueue"><span data-icon="queue"></span> Queue</button></div>
 </section>
 <aside class="lyrics-sheet" id="lyricsSheet"><header><div><span class="eyebrow">LIVE LYRICS</span><h3 id="lyricsTitle">Lyrics</h3></div><button id="closeLyrics">×</button></header><div class="lyrics-body" id="lyricsBody"><div class="lyrics-empty">Choose a song to see its lyrics.</div></div><footer><span>Lyrics provided by LRCLIB</span><button id="lyricsExternal">Open song ↗</button></footer></aside>
-<div class="video-dock" id="videoDock"><div class="video-dock-label"><span>OFFICIAL VIDEO</span><button id="videoStop" aria-label="Stop video">×</button></div><div id="youtubePlayer"></div></div>
+<div class="video-dock" id="videoDock"><div class="video-dock-label"><span>NOW PLAYING · OFFICIAL VIDEO</span><button id="videoStop" aria-label="Close video">×</button></div><div id="youtubePlayer"></div></div>
 <div class="toast" id="toast"></div><div class="mobile-overlay" id="overlay"></div><audio id="audio" preload="metadata"></audio>
-<script src="https://www.youtube.com/iframe_api"></script><script src="/abhi-music-v8.js"></script></body></html>
+<script src="https://www.youtube.com/iframe_api"></script><script src="/abhi-music-v9.js"></script></body></html>
