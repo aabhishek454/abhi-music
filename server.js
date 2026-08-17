@@ -29,6 +29,12 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, {'Content-Type':'application/json','Cache-Control':'public, max-age=300'});
       return res.end(JSON.stringify(tracks));
     }
+    if (u.pathname === '/api/lyrics') {
+      const clean=s=>(s||'').replace(/\([^)]*(official|lyrics?|video|audio)[^)]*\)/gi,'').replace(/\[[^\]]*\]/g,'').replace(/\s*[|–—-]\s*(official|lyrics?|music video|audio).*$/i,'').trim();
+      const artist=clean((u.searchParams.get('artist')||'').slice(0,120)), track=clean((u.searchParams.get('track')||'').slice(0,160));
+      const lr=await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(`${track} ${artist}`.trim())}`,{headers:{'User-Agent':'AbhiMusic/1.0'}}); const list=await lr.json(); const item=list.find(x=>x.syncedLyrics)||list.find(x=>x.plainLyrics);
+      res.writeHead(item?200:404,{'Content-Type':'application/json'}); return res.end(JSON.stringify(item?{id:item.id,trackName:item.trackName,artistName:item.artistName,syncedLyrics:item.syncedLyrics,plainLyrics:item.plainLyrics}:{error:'Lyrics not found for this song'}));
+    }
     if (u.pathname === '/api/youtube') {
       const key = process.env.YOUTUBE_API_KEY;
       if (!key) { res.writeHead(503, {'Content-Type':'application/json'}); return res.end(JSON.stringify({error:'YouTube is not configured yet',code:'YOUTUBE_KEY_MISSING'})); }
