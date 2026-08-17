@@ -66,5 +66,16 @@
     <div class="player-tools"><button id="queueBtn" title="Queue"><span data-icon="queue"></span></button><button id="volumeBtn"><span data-icon="volume"></span></button><div class="volume" id="volume"><div id="volumeFill"></div></div><button class="expand" title="Open in music store"><span data-icon="external"></span></button></div>
   </footer>
 </div>
+<section class="full-player" id="fullPlayer" aria-hidden="true">
+  <div class="full-player-bg" id="fullPlayerBg"></div>
+  <header><button id="closeFullPlayer" aria-label="Close full player">⌄</button><div><span>NOW PLAYING</span><b>ABHI MUSIC</b></div><button id="fullExternal" aria-label="Open on YouTube"><span data-icon="external"></span></button></header>
+  <div class="full-art"><img id="fullImg" alt="Current song artwork"><div class="full-playing-badge"><i></i><i></i><i></i><span>PLAYING</span></div></div>
+  <div class="full-meta"><div><h2 id="fullTitle">Choose a song</h2><p id="fullArtist">Abhi Music</p></div><button id="fullLike"><span data-icon="heart"></span></button></div>
+  <div class="full-progress" id="fullProgress"><div id="fullProgressFill"><i></i></div></div>
+  <div class="full-times"><span id="fullCurrent">0:00</span><span id="fullDuration">0:00</span></div>
+  <div class="full-controls"><button id="fullShuffle"><span data-icon="shuffle"></span></button><button id="fullPrev"><span data-icon="previous"></span></button><button class="full-play" id="fullPlay"><span data-icon="play"></span></button><button id="fullNext"><span data-icon="next"></span></button><button id="fullRepeat"><span data-icon="repeat"></span></button></div>
+  <div class="full-bottom"><span data-icon="volume"></span><div class="full-volume" id="fullVolume"><div id="fullVolumeFill"></div></div><button id="fullQueue"><span data-icon="queue"></span> Queue</button></div>
+  <div id="youtubePlayer"></div>
+</section>
 <div class="toast" id="toast"></div><div class="mobile-overlay" id="overlay"></div><audio id="audio" preload="metadata"></audio>
-<script src="/app.js"></script></body></html>
+<script src="https://www.youtube.com/iframe_api"></script><script src="/app.js"></script></body></html>

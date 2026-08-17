@@ -5,8 +5,9 @@ A polished, responsive music discovery and preview app for Bollywood, Punjabi, I
 ## Features
 
 - Search songs, artists, and albums
-- Legal 30-second audio previews from Apple's public iTunes Search API
-- Play queue, shuffle, repeat, seek, and volume controls
+- Full official music playback through the YouTube IFrame Player and YouTube Data API
+- Licensed 30-second Apple previews as a fallback when YouTube is not configured
+- Play queue, shuffle, repeat, seek, volume, and a mobile full-screen player
 - Liked songs and recently played history saved in the browser
 - Curated mood and genre discovery
 - Responsive desktop and mobile interface

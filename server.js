@@ -29,6 +29,19 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, {'Content-Type':'application/json','Cache-Control':'public, max-age=300'});
       return res.end(JSON.stringify(tracks));
     }
+    if (u.pathname === '/api/youtube') {
+      const key = process.env.YOUTUBE_API_KEY;
+      if (!key) { res.writeHead(503, {'Content-Type':'application/json'}); return res.end(JSON.stringify({error:'YouTube is not configured yet',code:'YOUTUBE_KEY_MISSING'})); }
+      const q = (u.searchParams.get('q') || 'latest Indian music official audio').slice(0,100);
+      const sr = await fetch(`https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({key,part:'snippet',type:'video',videoCategoryId:'10',maxResults:'30',q,safeSearch:'moderate'})}`);
+      const sd = await sr.json(); if(!sr.ok) throw new Error(sd.error?.message || 'YouTube search failed');
+      const ids = sd.items.map(x=>x.id.videoId).filter(Boolean);
+      const dr = await fetch(`https://www.googleapis.com/youtube/v3/videos?${new URLSearchParams({key,part:'contentDetails,status,snippet',id:ids.join(',')})}`);
+      const dd = await dr.json(); const map = new Map(dd.items.map(x=>[x.id,x]));
+      const isoMs = v=>{const m=(v||'').match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);return m?((+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0))*1000:0};
+      const out=sd.items.map(r=>{const v=map.get(r.id.videoId);if(!v||v.status?.embeddable===false)return null;const s=v.snippet;return{id:`yt-${v.id}`,youtubeId:v.id,source:'youtube',title:s.title,artist:s.channelTitle,album:'YouTube Music',artwork:s.thumbnails?.maxres?.url||s.thumbnails?.high?.url,url:`https://www.youtube.com/watch?v=${v.id}`,genre:'Music',duration:isoMs(v.contentDetails?.duration),release:s.publishedAt}}).filter(Boolean);
+      res.writeHead(200, {'Content-Type':'application/json'}); return res.end(JSON.stringify(out));
+    }
     if (u.pathname === '/api/discover') {
       const terms = ['latest Bollywood hits','Punjabi hits','Indian pop','Arijit Singh'];
       const groups = await Promise.all(terms.map(t => getTracks(t, 18)));
