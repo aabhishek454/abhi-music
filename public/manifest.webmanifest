@@ -1,0 +1,11 @@
+{
+  "name": "Abhi Music",
+  "short_name": "Abhi Music",
+  "description": "Your personal music discovery player",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090a0b",
+  "theme_color": "#b7ff4a",
+  "orientation": "portrait-primary",
+  "icons": [{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
