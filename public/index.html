@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#090a0b"><title>Abhi Music — Listen your way</title>
-<link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/abhi-music-v6.css">
+<link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/abhi-music-v7.css">
 </head><body>
 <div class="noise"></div>
 <div class="app">
@@ -56,6 +56,12 @@
 
       <section id="searchPage" class="page"><div class="page-title"><span class="eyebrow">FIND YOUR NEXT FAVOURITE</span><h1>Discover <i>something new.</i></h1></div><div id="searchEmpty"><h3>Browse every mood</h3><div class="genre-grid"></div></div><div id="searchResults" class="hidden"><div class="results-head"><h2>Results for “<span id="queryLabel"></span>”</h2><span id="resultCount"></span></div><div class="track-table" id="resultsList"></div></div></section>
       <section id="libraryPage" class="page"><div class="page-title"><span class="eyebrow">YOUR COLLECTION</span><h1>Music you <i>kept.</i></h1></div><div class="library-stats"><div><b id="libLikes">0</b><span>liked songs</span></div><div><b id="libRecent">0</b><span>recent plays</span></div><div><b id="libMinutes">0</b><span>minutes discovered</span></div></div><h2 class="subheading">Liked songs</h2><div class="track-table" id="libraryList"></div></section>
+      <section id="statsPage" class="page">
+        <div class="page-title"><span class="eyebrow">YOUR LISTENING STORY</span><h1>Every beat <i>counts.</i></h1></div>
+        <div class="stats-cards"><article><span>TIME LISTENED</span><b id="statTime">0m</b><small>Across all sessions</small></article><article><span>SONGS PLAYED</span><b id="statPlays">0</b><small>Full plays and previews</small></article><article><span>TOP ARTIST</span><b id="statArtist">—</b><small>Your current favourite</small></article><article><span>DISCOVERY SCORE</span><b id="statDiscovery">0%</b><small>Unique music explored</small></article></div>
+        <div class="stats-layout"><article class="chart-card"><div class="section-head"><div><span class="eyebrow">LAST 7 DAYS</span><h2>Your listening rhythm</h2></div></div><div class="week-chart" id="weekChart"></div></article><article class="top-card"><span class="eyebrow">TOP ARTISTS</span><h2>On repeat</h2><div id="topArtists"></div></article></div>
+        <div class="stats-footer"><span>Stats stay private on this device.</span><button id="resetStats">Reset statistics</button></div>
+      </section>
     </div>
   </main>
 
@@ -75,8 +81,9 @@
   <div class="full-progress" id="fullProgress"><div id="fullProgressFill"><i></i></div></div>
   <div class="full-times"><span id="fullCurrent">0:00</span><span id="fullDuration">0:00</span></div>
   <div class="full-controls"><button id="fullShuffle"><span data-icon="shuffle"></span></button><button id="fullPrev"><span data-icon="previous"></span></button><button class="full-play" id="fullPlay"><span data-icon="play"></span></button><button id="fullNext"><span data-icon="next"></span></button><button id="fullRepeat"><span data-icon="repeat"></span></button></div>
-  <div class="full-bottom"><span data-icon="volume"></span><div class="full-volume" id="fullVolume"><div id="fullVolumeFill"></div></div><button id="fullAi" class="active"><b>✦</b> AI DJ</button><button id="fullQueue"><span data-icon="queue"></span> Queue</button></div>
+  <div class="full-bottom"><span data-icon="volume"></span><div class="full-volume" id="fullVolume"><div id="fullVolumeFill"></div></div><button id="fullLyrics"><b>≋</b> Lyrics</button><button id="fullAi" class="active"><b>✦</b> AI DJ</button><button id="fullQueue"><span data-icon="queue"></span> Queue</button></div>
 </section>
+<aside class="lyrics-sheet" id="lyricsSheet"><header><div><span class="eyebrow">LIVE LYRICS</span><h3 id="lyricsTitle">Lyrics</h3></div><button id="closeLyrics">×</button></header><div class="lyrics-body" id="lyricsBody"><div class="lyrics-empty">Choose a song to see its lyrics.</div></div><footer><span>Lyrics provided by LRCLIB</span><button id="lyricsExternal">Open song ↗</button></footer></aside>
 <div class="video-dock" id="videoDock"><div class="video-dock-label"><span>OFFICIAL VIDEO</span><button id="videoStop" aria-label="Stop video">×</button></div><div id="youtubePlayer"></div></div>
 <div class="toast" id="toast"></div><div class="mobile-overlay" id="overlay"></div><audio id="audio" preload="metadata"></audio>
-<script src="https://www.youtube.com/iframe_api"></script><script src="/abhi-music-v6.js"></script></body></html>
+<script src="https://www.youtube.com/iframe_api"></script><script src="/abhi-music-v7.js"></script></body></html>
