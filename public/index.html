@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090a0b"><title>Abhi Music — Listen your way</title>
+<link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css">
+</head><body>
+<div class="noise"></div>
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="#" data-page="home" aria-label="Abhi Music home"><span class="brand-mark">A</span><span>abhi<span class="brand-dot">.</span></span></a>
+    <nav class="main-nav">
+      <button class="nav-item active" data-page="home"><span data-icon="home"></span><b>Home</b></button>
+      <button class="nav-item" data-page="search"><span data-icon="search"></span><b>Discover</b></button>
+      <button class="nav-item" data-page="library"><span data-icon="library"></span><b>Your Library</b></button>
+    </nav>
+    <div class="nav-label"><span>Your music</span><button id="newPlaylist" title="Create playlist">+</button></div>
+    <nav class="playlist-nav">
+      <button class="text-nav" data-page="liked"><span class="mini-heart">♥</span> Liked Songs <em id="likedCount">0</em></button>
+      <button class="text-nav" data-page="recent"><span class="mini-clock">↻</span> Recently Played</button>
+      <div id="customPlaylists"></div>
+    </nav>
+    <div class="sidebar-card">
+      <span class="spark">✦</span><div><b>Your soundtrack,<br>beautifully simple.</b><small>Free previews. Zero sign-up.</small></div>
+    </div>
+    <div class="profile"><div class="avatar">A</div><div><b>Music lover</b><small>Free listener</small></div><button>•••</button></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="mobile-menu" id="menuBtn" aria-label="Menu"><span data-icon="menu"></span></button>
+      <div class="history-buttons"><button id="backBtn">‹</button><button>›</button></div>
+      <div class="search-wrap"><span data-icon="search"></span><input id="searchInput" autocomplete="off" placeholder="Search artists, songs, albums..."><kbd>⌘ K</kbd><button id="clearSearch" class="clear">×</button></div>
+      <div class="top-actions"><button class="ghost" id="surpriseBtn"><span>✦</span> Surprise me</button><button class="icon-button" id="themeBtn" title="Change accent"><span data-icon="sun"></span></button><div class="top-avatar">A</div></div>
+    </header>
+
+    <div class="content" id="content">
+      <section id="homePage" class="page active">
+        <div class="greeting"><div><span class="eyebrow">YOUR DAILY SOUND</span><h1><span id="greeting">Good evening</span>,<br><i>Abhi.</i></h1></div><div class="date-pill"><span class="pulse"></span><span id="dateText"></span></div></div>
+        <section class="hero" id="hero">
+          <div class="hero-art"><div class="disc"></div><img id="heroImg" alt="Featured album"></div>
+          <div class="hero-copy"><span class="feature-label">FEATURED RELEASE</span><h2 id="heroTitle">Loading your soundtrack…</h2><p id="heroArtist">Fresh music, picked for you</p><div class="hero-actions"><button class="play-main" id="heroPlay"><span data-icon="play"></span> Play now</button><button class="round-btn hero-like" id="heroLike"><span data-icon="heart"></span></button><button class="round-btn"><span data-icon="more"></span></button></div></div>
+          <div class="hero-index"><b>01</b><span>/ 04</span></div><div class="hero-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </section>
+        <section class="section"><div class="section-head"><div><span class="eyebrow">CURATED FOR YOU</span><h2>Made for your mood</h2></div><button class="view-all" data-open="search">Explore all <span>→</span></button></div>
+          <div class="mood-grid">
+            <button class="mood lime" data-query="Bollywood dance hits"><span class="mood-no">01</span><span class="mood-art">◒</span><div><b>Energy<br>Boost</b><small>Turn it all the way up</small></div><i>↗</i></button>
+            <button class="mood violet" data-query="chill Indian acoustic"><span class="mood-no">02</span><span class="mood-art">⌁</span><div><b>Slow<br>Down</b><small>Easy songs, softer hours</small></div><i>↗</i></button>
+            <button class="mood orange" data-query="Punjabi party hits"><span class="mood-no">03</span><span class="mood-art">✦</span><div><b>Desi<br>Party</b><small>Big beats, bigger mood</small></div><i>↗</i></button>
+            <button class="mood blue" data-query="Indian focus instrumental"><span class="mood-no">04</span><span class="mood-art">◉</span><div><b>Deep<br>Focus</b><small>Find your flow</small></div><i>↗</i></button>
+          </div>
+        </section>
+        <section class="section"><div class="section-head"><div><span class="eyebrow">WHAT'S HOT</span><h2>Trending right now</h2></div><button class="view-all" data-open="search">See all <span>→</span></button></div><div class="track-table" id="trendingList"></div></section>
+        <section class="section"><div class="section-head"><div><span class="eyebrow">THE PUNJAB EDIT</span><h2>Sounds of Punjab</h2></div></div><div class="album-row" id="punjabiRow"></div></section>
+      </section>
+
+      <section id="searchPage" class="page"><div class="page-title"><span class="eyebrow">FIND YOUR NEXT FAVOURITE</span><h1>Discover <i>something new.</i></h1></div><div id="searchEmpty"><h3>Browse every mood</h3><div class="genre-grid"></div></div><div id="searchResults" class="hidden"><div class="results-head"><h2>Results for “<span id="queryLabel"></span>”</h2><span id="resultCount"></span></div><div class="track-table" id="resultsList"></div></div></section>
+      <section id="libraryPage" class="page"><div class="page-title"><span class="eyebrow">YOUR COLLECTION</span><h1>Music you <i>kept.</i></h1></div><div class="library-stats"><div><b id="libLikes">0</b><span>liked songs</span></div><div><b id="libRecent">0</b><span>recent plays</span></div><div><b id="libMinutes">0</b><span>minutes discovered</span></div></div><h2 class="subheading">Liked songs</h2><div class="track-table" id="libraryList"></div></section>
+    </div>
+  </main>
+
+  <aside class="queue-panel" id="queuePanel"><div class="queue-head"><div><span class="eyebrow">UP NEXT</span><h3>Your queue</h3></div><button id="closeQueue">×</button></div><div id="queueList"></div><button class="clear-queue" id="clearQueue">Clear queue</button></aside>
+
+  <footer class="player" id="player">
+    <div class="now-playing"><div class="player-cover"><img id="playerImg" alt=""><div class="cover-wave"><i></i><i></i><i></i></div></div><div class="player-meta"><b id="playerTitle">Choose a song</b><span id="playerArtist">Your soundtrack starts here</span></div><button class="like-button" id="playerLike"><span data-icon="heart"></span></button></div>
+    <div class="player-center"><div class="controls"><button id="shuffleBtn"><span data-icon="shuffle"></span></button><button id="prevBtn"><span data-icon="previous"></span></button><button class="big-play" id="playBtn"><span data-icon="play"></span></button><button id="nextBtn"><span data-icon="next"></span></button><button id="repeatBtn"><span data-icon="repeat"></span></button></div><div class="timeline"><span id="currentTime">0:00</span><div class="progress" id="progress"><div id="progressFill"><i></i></div></div><span id="duration">0:30</span></div></div>
+    <div class="player-tools"><button id="queueBtn" title="Queue"><span data-icon="queue"></span></button><button id="volumeBtn"><span data-icon="volume"></span></button><div class="volume" id="volume"><div id="volumeFill"></div></div><button class="expand" title="Open in music store"><span data-icon="external"></span></button></div>
+  </footer>
+</div>
+<div class="toast" id="toast"></div><div class="mobile-overlay" id="overlay"></div><audio id="audio" preload="metadata"></audio>
+<script src="/app.js"></script></body></html>
