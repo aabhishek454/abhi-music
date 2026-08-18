@@ -1,0 +1,8 @@
+package com.abhishek.abhimusic;
+import android.app.*;import android.appwidget.*;import android.content.*;import android.widget.RemoteViews;
+public class AbhiMusicWidget extends AppWidgetProvider {
+ @Override public void onUpdate(Context c,AppWidgetManager m,int[] ids){for(int id:ids)updateOne(c,m,id,"Abhi Music","Tap play to resume",false);}
+ private static PendingIntent service(Context c,String action,int code){return PendingIntent.getService(c,code,PlaybackService.intent(c,action),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);}
+ private static void updateOne(Context c,AppWidgetManager m,int id,String title,String artist,boolean playing){RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.widget_player);v.setTextViewText(R.id.widget_title,title);v.setTextViewText(R.id.widget_artist,artist);v.setTextViewText(R.id.widget_play,playing?"Ⅱ":"▶");v.setOnClickPendingIntent(R.id.widget_play,service(c,playing?PlaybackService.ACTION_PAUSE:PlaybackService.ACTION_RESUME,20));v.setOnClickPendingIntent(R.id.widget_prev,service(c,PlaybackService.ACTION_PREVIOUS,21));v.setOnClickPendingIntent(R.id.widget_next,service(c,PlaybackService.ACTION_NEXT,22));v.setOnClickPendingIntent(R.id.widget_logo,PendingIntent.getActivity(c,23,new Intent(c,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT));m.updateAppWidget(id,v);}
+ public static void update(Context c,String title,String artist,boolean playing){AppWidgetManager m=AppWidgetManager.getInstance(c);ComponentName n=new ComponentName(c,AbhiMusicWidget.class);for(int id:m.getAppWidgetIds(n))updateOne(c,m,id,title,artist,playing);}
+}
