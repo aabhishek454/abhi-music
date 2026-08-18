@@ -1,0 +1,37 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-feature android:name="android.hardware.type.automotive" android:required="false"/>
+
+    <application
+        android:allowBackup="true"
+        android:usesCleartextTraffic="false"
+        android:hardwareAccelerated="true"
+        android:label="Abhi Music"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:roundIcon="@drawable/ic_launcher_foreground"
+        android:theme="@style/AppTheme">
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc"/>
+        <activity android:name=".MainActivity" android:exported="true" android:supportsPictureInPicture="true" android:resizeableActivity="true" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <receiver android:name=".AbhiMusicWidget" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/abhi_widget_info"/>
+        </receiver>
+        <service
+            android:name=".PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            android:stopWithTask="false">
+            <intent-filter><action android:name="android.media.browse.MediaBrowserService"/></intent-filter>
+        </service>
+    </application>
+</manifest>
