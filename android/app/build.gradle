@@ -1,0 +1,39 @@
+plugins { id 'com.android.application' }
+
+def releaseKeystore = System.getenv('ABHI_KEYSTORE')
+def releaseStorePassword = System.getenv('ABHI_STORE_PASSWORD')
+def releaseKeyPassword = System.getenv('ABHI_KEY_PASSWORD')
+def hasReleaseKey = releaseKeystore && releaseStorePassword && releaseKeyPassword
+
+android {
+    namespace 'com.abhishek.abhimusic'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.abhishek.abhimusic'
+        minSdk 24
+        targetSdk 35
+        versionCode 5
+        versionName '1.4.0'
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseKey) {
+                storeFile file(releaseKeystore)
+                storePassword releaseStorePassword
+                keyAlias 'abhi-music'
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    lint { checkReleaseBuilds false; abortOnError false }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+}
