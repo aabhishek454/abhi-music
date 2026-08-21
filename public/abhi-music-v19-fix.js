@@ -1,98 +1,283 @@
-/* v1.9 mini-player + background play fix */
-(function(){
+/* Abhi Music v1.9.1 — mini-player plays instantly (no full window) + true background play */
+(function () {
   'use strict';
-  function absUrl(u){try{if(!u||u==='#'||String(u).startsWith('blob:'))return null;return new URL(u,location.origin).href}catch(e){return null}}
-  function canNative(t){return !!(window.AbhiAndroid&&t&&t.source!=='youtube'&&absUrl(t.preview))}
-  function isYT(){return state&&state.current&&state.current.source==='youtube'}
-  function $q(s){return document.querySelector(s)}
 
-  // 1) Closing full player must NOT stop music
-  window.closeFullPlayer=function(){
-    var fp=$q('#fullPlayer');
-    if(fp){fp.classList.remove('open');fp.setAttribute('aria-hidden','true')}
+  function absUrl(u) {
+    try {
+      if (!u || u === '#' || String(u).startsWith('blob:')) return null;
+      return new URL(u, location.origin).href;
+    } catch (e) {
+      return null;
+    }
+  }
+  function canNative(t) {
+    return !!(window.AbhiAndroid && t && t.source !== 'youtube' && absUrl(t.preview));
+  }
+  function isYT() {
+    return !!(typeof state !== 'undefined' && state && state.current && state.current.source === 'youtube');
+  }
+  function $q(s) {
+    return document.querySelector(s);
+  }
+  function isActuallyPlaying() {
+    try {
+      if (isYT() && typeof ytReady !== 'undefined' && ytReady && ytPlayer) {
+        var st = ytPlayer.getPlayerState();
+        return st === 1 || st === 3; /* PLAYING or BUFFERING */
+      }
+      if (canNative(state && state.current) && typeof nativePlaying !== 'undefined') return !!nativePlaying;
+      if (typeof audio !== 'undefined' && audio && !audio.paused && !audio.ended) return true;
+      if (typeof playbackActive !== 'undefined' && playbackActive) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  /* 1) Close full player — NEVER pause / stop music (background continues) */
+  window.closeFullPlayer = function () {
+    var fp = $q('#fullPlayer');
+    if (fp) {
+      fp.classList.remove('open');
+      fp.setAttribute('aria-hidden', 'true');
+    }
   };
 
-  // 2) Play without forcing full-screen window
-  window.playTrack=function(t,source){
-    if(!t)return;
-    if(source){
-      var idx=source.findIndex(function(x){return x.id===t.id});
-      state.queue=source.slice(idx+1).concat(source.slice(0,idx));
+  /* Keep a clean open that only opens (no side effects) */
+  window.openFullPlayer = function () {
+    if (!state || !state.current) return;
+    var fp = $q('#fullPlayer');
+    if (fp) {
+      fp.classList.add('open');
+      fp.setAttribute('aria-hidden', 'false');
     }
-    state.current=t;
-    try{recordPlay(t)}catch(e){}
-    activeLyrics=[];
-    try{maybePreviewTip(t)}catch(e){}
+  };
 
-    if(t.source==='youtube'){
-      try{audio.pause();audio.removeAttribute('src')}catch(e){}
-      if(window.AbhiAndroid){try{window.AbhiAndroid.setVideoActive(true)}catch(e){}}
-      var dock=$q('#videoDock'); if(dock) dock.classList.add('visible');
-      var fp=$q('#fullPlayer'); if(fp) fp.classList.remove('open');
-      (function start(){
-        if(typeof ytReady!=='undefined'&&ytReady&&ytPlayer){
-          try{ytPlayer.loadVideoById(t.youtubeId);ytPlayer.playVideo()}catch(e){try{ytPlayer.loadVideoById(t.youtubeId)}catch(e2){}}
-        } else setTimeout(start,200);
+  /* 2) playTrack — start music WITHOUT forcing full-screen window */
+  window.playTrack = function (t, source) {
+    if (!t) return;
+    if (source && Array.isArray(source)) {
+      var idx = source.findIndex(function (x) {
+        return x.id === t.id;
+      });
+      if (idx >= 0) state.queue = source.slice(idx + 1).concat(source.slice(0, idx));
+    }
+    state.current = t;
+    try { recordPlay(t); } catch (e) {}
+    try { activeLyrics = []; } catch (e) {}
+    try { maybePreviewTip(t); } catch (e) {}
+
+    if (t.source === 'youtube') {
+      try { audio.pause(); audio.removeAttribute('src'); } catch (e) {}
+      if (window.AbhiAndroid) {
+        try { window.AbhiAndroid.setVideoActive(true); } catch (e) {}
+      }
+      var dock = $q('#videoDock');
+      if (dock) dock.classList.add('visible');
+      /* DO NOT open full player — mini plays immediately */
+      (function start() {
+        if (typeof ytReady !== 'undefined' && ytReady && ytPlayer) {
+          try {
+            ytPlayer.loadVideoById(t.youtubeId);
+            ytPlayer.playVideo();
+          } catch (e) {
+            try { ytPlayer.loadVideoById(t.youtubeId); } catch (e2) {}
+          }
+        } else setTimeout(start, 180);
       })();
     } else {
-      try{if(ytReady&&ytPlayer)ytPlayer.stopVideo()}catch(e){}
-      var dock=$q('#videoDock'); if(dock) dock.classList.remove('visible');
-      if(canNative(t)){
-        try{audio.pause();audio.removeAttribute('src')}catch(e){}
-        window.AbhiAndroid.play(absUrl(t.preview),t.title,t.artist,t.artwork||'');
-        try{toast('Background play on')}catch(e){}
+      try {
+        if (typeof ytReady !== 'undefined' && ytReady && ytPlayer) ytPlayer.stopVideo();
+      } catch (e) {}
+      var dock2 = $q('#videoDock');
+      if (dock2) dock2.classList.remove('visible');
+      if (window.AbhiAndroid) {
+        try { window.AbhiAndroid.setVideoActive(false); } catch (e) {}
+      }
+      if (canNative(t)) {
+        try { audio.pause(); audio.removeAttribute('src'); } catch (e) {}
+        try {
+          window.AbhiAndroid.play(absUrl(t.preview), t.title || '', t.artist || '', t.artwork || '');
+          try { toast('Background play on'); } catch (e) {}
+        } catch (e) {
+          audio.src = t.preview;
+          audio.play().catch(function () {});
+        }
       } else {
-        audio.src=t.preview;
-        audio.play().catch(function(){try{toast('Tap \u25b6 on the mini player')}catch(e){}});
+        audio.src = t.preview;
+        audio.play().catch(function () {
+          try { toast('Tap play on the mini player'); } catch (e) {}
+        });
       }
     }
-    state.recent=[t].concat(state.recent.filter(function(x){return x.id!==t.id})).slice(0,30);
-    try{persist();updatePlayer();renderQueue();renderCurrentRows()}catch(e){}
+    state.recent = [t].concat(state.recent.filter(function (x) {
+      return x.id !== t.id;
+    })).slice(0, 30);
+    try {
+      persist();
+      updatePlayer();
+      renderQueue();
+      renderCurrentRows();
+    } catch (e) {}
   };
 
-  // 3) Mini play button: play/pause only — never open full window first
-  window.togglePlayback=function(){
-    if(!state.current){if(state.hero)return playTrack(state.hero,state.tracks);return}
-    if(isYT()){
-      if(typeof ytReady==='undefined'||!ytReady||!ytPlayer){try{toast('Loading player\u2026')}catch(e){}return}
-      var dock=$q('#videoDock'); if(dock) dock.classList.add('visible');
-      try{
-        var st=ytPlayer.getPlayerState();
-        if(st===YT.PlayerState.PLAYING) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
-      }catch(e){try{ytPlayer.playVideo()}catch(e2){}}
-    } else if(canNative(state.current)){
-      if(nativePlaying) window.AbhiAndroid.pause(); else window.AbhiAndroid.resume();
+  /* 3) togglePlayback — pure play/pause. NEVER open full window */
+  window.togglePlayback = function () {
+    if (!state || !state.current) {
+      if (state && state.hero) return playTrack(state.hero, state.tracks);
+      return;
+    }
+    if (isYT()) {
+      if (typeof ytReady === 'undefined' || !ytReady || !ytPlayer) {
+        try { toast('Loading player…'); } catch (e) {}
+        return;
+      }
+      var dock = $q('#videoDock');
+      if (dock) dock.classList.add('visible');
+      if (window.AbhiAndroid) {
+        try { window.AbhiAndroid.setVideoActive(true); } catch (e) {}
+      }
+      try {
+        var st = ytPlayer.getPlayerState();
+        if (st === 1) ytPlayer.pauseVideo();
+        else ytPlayer.playVideo();
+      } catch (e) {
+        try { ytPlayer.playVideo(); } catch (e2) {}
+      }
+    } else if (canNative(state.current)) {
+      try {
+        if (typeof nativePlaying !== 'undefined' && nativePlaying) window.AbhiAndroid.pause();
+        else window.AbhiAndroid.resume();
+      } catch (e) {
+        try {
+          window.AbhiAndroid.play(
+            absUrl(state.current.preview),
+            state.current.title || '',
+            state.current.artist || '',
+            state.current.artwork || ''
+          );
+        } catch (e2) {}
+      }
     } else {
-      if(audio.paused) audio.play().catch(function(){}); else audio.pause();
+      try {
+        if (audio.paused) audio.play().catch(function () {});
+        else audio.pause();
+      } catch (e) {}
     }
   };
 
-  // 4) Rebind mini player: first tap plays, when playing tap opens full
-  function bindMini(){
-    var cover=$q('#playerImg')&&$q('#playerImg').parentElement;
-    var meta=$q('#playerTitle')&&$q('#playerTitle').parentElement;
-    var artist=$q('#playerArtist');
-    function onMini(){
-      if(!state.current)return;
-      if(!playbackActive) togglePlayback(); else openFullPlayer();
-    }
-    if(cover) cover.onclick=onMini;
-    if(meta) meta.onclick=onMini;
-    if(artist) artist.onclick=onMini;
-    var play=$q('#playBtn'); if(play) play.onclick=togglePlayback;
-    var fullPlay=$q('#fullPlay'); if(fullPlay) fullPlay.onclick=togglePlayback;
-    var close=$q('#closeFullPlayer'); if(close) close.onclick=closeFullPlayer;
+  /* 4) Mini-player UX
+     - Play button: ALWAYS only play/pause (never open full)
+     - Cover / title / artist: if not playing → play; if already playing → open full
+     Rebind aggressively so core script cannot win. */
+  function onMiniCover(e) {
+    try {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+    } catch (err) {}
+    if (!state || !state.current) return;
+    if (!isActuallyPlaying()) togglePlayback();
+    else openFullPlayer();
   }
-  bindMini();
-  setTimeout(bindMini,800);
-  setTimeout(bindMini,2000);
+  function onPlayOnly(e) {
+    try {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+    } catch (err) {}
+    togglePlayback();
+  }
 
-  // 5) Background: auto PiP for YouTube when app hides
-  document.addEventListener('visibilitychange',function(){
-    if(document.hidden&&isYT()&&playbackActive&&window.AbhiAndroid){
-      try{window.AbhiAndroid.enterPip()}catch(e){}
+  function bindOne(el, handler) {
+    if (!el) return;
+    try {
+      el.onclick = handler;
+      el.ontouchend = function (ev) {
+        if (el.__abhiTouchLock) return;
+        el.__abhiTouchLock = true;
+        setTimeout(function () { el.__abhiTouchLock = false; }, 320);
+        handler(ev);
+      };
+    } catch (e) {}
+  }
+
+  function bindMini() {
+    var img = $q('#playerImg');
+    var cover = img && img.parentElement;
+    var title = $q('#playerTitle');
+    var meta = title && title.parentElement;
+    var artist = $q('#playerArtist');
+    var play = $q('#playBtn');
+    var fullPlay = $q('#fullPlay');
+    var close = $q('#closeFullPlayer');
+    var playerBar = $q('#player');
+
+    bindOne(cover, onMiniCover);
+    bindOne(meta, onMiniCover);
+    bindOne(artist, onMiniCover);
+    bindOne(play, onPlayOnly);
+    bindOne(fullPlay, onPlayOnly);
+    if (close) {
+      close.onclick = closeFullPlayer;
+      close.ontouchend = function () { closeFullPlayer(); };
+    }
+
+    if (playerBar && !playerBar.__abhiShield) {
+      playerBar.__abhiShield = true;
+      playerBar.addEventListener(
+        'click',
+        function (ev) {
+          var t = ev.target;
+          if (t && t.closest && t.closest('#playBtn')) {
+            /* play only — no open */
+          }
+        },
+        true
+      );
+    }
+  }
+
+  bindMini();
+  setTimeout(bindMini, 300);
+  setTimeout(bindMini, 800);
+  setTimeout(bindMini, 1600);
+  setTimeout(bindMini, 3000);
+  setTimeout(bindMini, 6000);
+  var rebindN = 0;
+  var rebindIv = setInterval(function () {
+    bindMini();
+    rebindN++;
+    if (rebindN > 20) clearInterval(rebindIv);
+  }, 1500);
+
+  /* 5) Background: auto PiP for YouTube when app hides */
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) return;
+    if (isYT() && isActuallyPlaying() && window.AbhiAndroid) {
+      try { window.AbhiAndroid.enterPip(); } catch (e) {}
+    }
+  });
+  window.addEventListener('pagehide', function () {
+    if (isYT() && window.AbhiAndroid) {
+      try { window.AbhiAndroid.enterPip(); } catch (e) {}
     }
   });
 
-  try{console.info('Abhi Music v1.9 playback fix loaded')}catch(e){}
+  var pipBtn = $q('#pipBtn');
+  if (pipBtn) {
+    pipBtn.onclick = function () {
+      if (window.AbhiAndroid) {
+        try {
+          window.AbhiAndroid.setVideoActive(true);
+          window.AbhiAndroid.enterPip();
+        } catch (e) {}
+      }
+    };
+  }
+
+  window.__ABHI_V191 = true;
+  try { console.info('Abhi Music v1.9.1 mini-player + background fix loaded'); } catch (e) {}
 })();
