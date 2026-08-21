@@ -1,4 +1,4 @@
-/* Abhi Music v1.9.1 — mini-player plays instantly (no full window) + true background play */
+/* Abhi Music v1.9.2 — Spotify-style background (no PiP) + mini-player play-first */
 (function () {
   'use strict';
 
@@ -23,7 +23,7 @@
     try {
       if (isYT() && typeof ytReady !== 'undefined' && ytReady && ytPlayer) {
         var st = ytPlayer.getPlayerState();
-        return st === 1 || st === 3; /* PLAYING or BUFFERING */
+        return st === 1 || st === 3;
       }
       if (canNative(state && state.current) && typeof nativePlaying !== 'undefined') return !!nativePlaying;
       if (typeof audio !== 'undefined' && audio && !audio.paused && !audio.ended) return true;
@@ -31,8 +31,76 @@
     } catch (e) {}
     return false;
   }
+  function trackMeta() {
+    var t = state && state.current;
+    if (!t) return { title: 'Abhi Music', artist: 'Playing', artwork: '' };
+    return {
+      title: t.title || 'Abhi Music',
+      artist: t.artist || 'Abhi Music',
+      artwork: t.artwork || ''
+    };
+  }
 
-  /* 1) Close full player — NEVER pause / stop music (background continues) */
+  function startSpotifyBg() {
+    if (!window.AbhiAndroid) return;
+    var m = trackMeta();
+    try {
+      if (typeof window.AbhiAndroid.startBackground === 'function') {
+        window.AbhiAndroid.startBackground(m.title, m.artist, m.artwork);
+      } else {
+        try { window.AbhiAndroid.setVideoActive(true); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+  function updateSpotifyBg(playing) {
+    if (!window.AbhiAndroid) return;
+    var m = trackMeta();
+    try {
+      if (typeof window.AbhiAndroid.updateBackground === 'function') {
+        window.AbhiAndroid.updateBackground(!!playing, m.title, m.artist);
+      }
+    } catch (e) {}
+  }
+  function stopSpotifyBg() {
+    if (!window.AbhiAndroid) return;
+    try {
+      if (typeof window.AbhiAndroid.stopBackground === 'function') {
+        window.AbhiAndroid.stopBackground();
+      } else {
+        try { window.AbhiAndroid.setVideoActive(false); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  window.__abhiOnBackground = function () {
+    if (isActuallyPlaying()) startSpotifyBg();
+  };
+
+  var _prevNative = window.onAbhiNativeState;
+  window.onAbhiNativeState = function (payload) {
+    try {
+      var s = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      if (s && s.command) {
+        if (s.command === 'pause') {
+          if (isYT() && ytReady && ytPlayer) try { ytPlayer.pauseVideo(); } catch (e) {}
+          else if (typeof audio !== 'undefined' && audio && !audio.paused) try { audio.pause(); } catch (e) {}
+          updateSpotifyBg(false);
+        } else if (s.command === 'resume' || s.command === 'play') {
+          if (isYT() && ytReady && ytPlayer) try { ytPlayer.playVideo(); } catch (e) {}
+          else if (typeof audio !== 'undefined' && audio) try { audio.play(); } catch (e) {}
+          updateSpotifyBg(true);
+        } else if (s.command === 'next') {
+          try { if (typeof next === 'function') next(); } catch (e) {}
+        } else if (s.command === 'previous') {
+          try { if (typeof prev === 'function') prev(); } catch (e) {}
+        }
+      }
+    } catch (e) {}
+    if (typeof _prevNative === 'function') {
+      try { _prevNative(payload); } catch (e) {}
+    }
+  };
+
   window.closeFullPlayer = function () {
     var fp = $q('#fullPlayer');
     if (fp) {
@@ -41,7 +109,6 @@
     }
   };
 
-  /* Keep a clean open that only opens (no side effects) */
   window.openFullPlayer = function () {
     if (!state || !state.current) return;
     var fp = $q('#fullPlayer');
@@ -51,13 +118,10 @@
     }
   };
 
-  /* 2) playTrack — start music WITHOUT forcing full-screen window */
   window.playTrack = function (t, source) {
     if (!t) return;
     if (source && Array.isArray(source)) {
-      var idx = source.findIndex(function (x) {
-        return x.id === t.id;
-      });
+      var idx = source.findIndex(function (x) { return x.id === t.id; });
       if (idx >= 0) state.queue = source.slice(idx + 1).concat(source.slice(0, idx));
     }
     state.current = t;
@@ -72,7 +136,6 @@
       }
       var dock = $q('#videoDock');
       if (dock) dock.classList.add('visible');
-      /* DO NOT open full player — mini plays immediately */
       (function start() {
         if (typeof ytReady !== 'undefined' && ytReady && ytPlayer) {
           try {
@@ -81,6 +144,7 @@
           } catch (e) {
             try { ytPlayer.loadVideoById(t.youtubeId); } catch (e2) {}
           }
+          startSpotifyBg();
         } else setTimeout(start, 180);
       })();
     } else {
@@ -100,12 +164,14 @@
         } catch (e) {
           audio.src = t.preview;
           audio.play().catch(function () {});
+          startSpotifyBg();
         }
       } else {
         audio.src = t.preview;
         audio.play().catch(function () {
           try { toast('Tap play on the mini player'); } catch (e) {}
         });
+        startSpotifyBg();
       }
     }
     state.recent = [t].concat(state.recent.filter(function (x) {
@@ -119,7 +185,6 @@
     } catch (e) {}
   };
 
-  /* 3) togglePlayback — pure play/pause. NEVER open full window */
   window.togglePlayback = function () {
     if (!state || !state.current) {
       if (state && state.hero) return playTrack(state.hero, state.tracks);
@@ -132,15 +197,17 @@
       }
       var dock = $q('#videoDock');
       if (dock) dock.classList.add('visible');
-      if (window.AbhiAndroid) {
-        try { window.AbhiAndroid.setVideoActive(true); } catch (e) {}
-      }
       try {
         var st = ytPlayer.getPlayerState();
-        if (st === 1) ytPlayer.pauseVideo();
-        else ytPlayer.playVideo();
+        if (st === 1) {
+          ytPlayer.pauseVideo();
+          updateSpotifyBg(false);
+        } else {
+          ytPlayer.playVideo();
+          startSpotifyBg();
+        }
       } catch (e) {
-        try { ytPlayer.playVideo(); } catch (e2) {}
+        try { ytPlayer.playVideo(); startSpotifyBg(); } catch (e2) {}
       }
     } else if (canNative(state.current)) {
       try {
@@ -158,16 +225,17 @@
       }
     } else {
       try {
-        if (audio.paused) audio.play().catch(function () {});
-        else audio.pause();
+        if (audio.paused) {
+          audio.play().catch(function () {});
+          startSpotifyBg();
+        } else {
+          audio.pause();
+          updateSpotifyBg(false);
+        }
       } catch (e) {}
     }
   };
 
-  /* 4) Mini-player UX
-     - Play button: ALWAYS only play/pause (never open full)
-     - Cover / title / artist: if not playing → play; if already playing → open full
-     Rebind aggressively so core script cannot win. */
   function onMiniCover(e) {
     try {
       if (e) {
@@ -190,7 +258,6 @@
     } catch (err) {}
     togglePlayback();
   }
-
   function bindOne(el, handler) {
     if (!el) return;
     try {
@@ -203,7 +270,6 @@
       };
     } catch (e) {}
   }
-
   function bindMini() {
     var img = $q('#playerImg');
     var cover = img && img.parentElement;
@@ -213,8 +279,6 @@
     var play = $q('#playBtn');
     var fullPlay = $q('#fullPlay');
     var close = $q('#closeFullPlayer');
-    var playerBar = $q('#player');
-
     bindOne(cover, onMiniCover);
     bindOne(meta, onMiniCover);
     bindOne(artist, onMiniCover);
@@ -224,22 +288,7 @@
       close.onclick = closeFullPlayer;
       close.ontouchend = function () { closeFullPlayer(); };
     }
-
-    if (playerBar && !playerBar.__abhiShield) {
-      playerBar.__abhiShield = true;
-      playerBar.addEventListener(
-        'click',
-        function (ev) {
-          var t = ev.target;
-          if (t && t.closest && t.closest('#playBtn')) {
-            /* play only — no open */
-          }
-        },
-        true
-      );
-    }
   }
-
   bindMini();
   setTimeout(bindMini, 300);
   setTimeout(bindMini, 800);
@@ -253,31 +302,49 @@
     if (rebindN > 20) clearInterval(rebindIv);
   }, 1500);
 
-  /* 5) Background: auto PiP for YouTube when app hides */
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) return;
-    if (isYT() && isActuallyPlaying() && window.AbhiAndroid) {
-      try { window.AbhiAndroid.enterPip(); } catch (e) {}
+    if (document.hidden) {
+      if (isActuallyPlaying()) startSpotifyBg();
+    } else {
+      if (isActuallyPlaying()) updateSpotifyBg(true);
+      else stopSpotifyBg();
     }
   });
   window.addEventListener('pagehide', function () {
-    if (isYT() && window.AbhiAndroid) {
-      try { window.AbhiAndroid.enterPip(); } catch (e) {}
-    }
+    if (isActuallyPlaying()) startSpotifyBg();
   });
 
   var pipBtn = $q('#pipBtn');
   if (pipBtn) {
     pipBtn.onclick = function () {
-      if (window.AbhiAndroid) {
-        try {
-          window.AbhiAndroid.setVideoActive(true);
-          window.AbhiAndroid.enterPip();
-        } catch (e) {}
-      }
+      startSpotifyBg();
+      try { toast('Background play on · like Spotify'); } catch (e) {}
     };
+    try {
+      pipBtn.innerHTML = '<b>◉</b> BG';
+      pipBtn.setAttribute('title', 'Background play');
+    } catch (e) {}
   }
 
-  window.__ABHI_V191 = true;
-  try { console.info('Abhi Music v1.9.1 mini-player + background fix loaded'); } catch (e) {}
+  setInterval(function () {
+    if (!window.AbhiAndroid) return;
+    if (!isActuallyPlaying()) return;
+    try { updateSpotifyBg(true); } catch (e) {}
+  }, 12000);
+
+  try {
+    var _setPlayIcon = window.setPlayIcon;
+    if (typeof setPlayIcon === 'function') {
+      window.setPlayIcon = function (playing) {
+        try { if (typeof _setPlayIcon === 'function') _setPlayIcon(playing); } catch (e) {
+          try { playbackActive = !!playing; } catch (e2) {}
+        }
+        if (playing) startSpotifyBg();
+        else updateSpotifyBg(false);
+      };
+    }
+  } catch (e) {}
+
+  window.__ABHI_V192 = true;
+  try { console.info('Abhi Music v1.9.2 Spotify-style background (no PiP) loaded'); } catch (e) {}
 })();
