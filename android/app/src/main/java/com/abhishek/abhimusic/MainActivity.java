@@ -14,17 +14,24 @@ import android.widget.Toast;
 import org.json.JSONObject;
 
 /**
- * Abhi Music v1.9.3 — Spotify-style background; fixed WebView audio focus so songs play.
- * WebView media keeps playing when the app is backgrounded; a media
- * foreground service holds the process + shows lock-screen controls.
+ * Abhi Music v1.9.4 — true background audio when leaving app / pressing Home / Back.
+ *
+ * Critical rules:
+ *  - Never call webView.onPause() (that kills YouTube/HTML).
+ *  - Keep WebView timers running (resumeTimers).
+ *  - When media is active, Back does NOT finish the Activity — moveTaskToBack.
+ *  - Foreground service holds process + lock-screen controls.
+ *  - JS force-resumes playback when document becomes hidden.
  */
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://abhi-music-amber.vercel.app";
-    private static final String APP_VERSION = "1.9.3";
+    private static final String APP_VERSION = "1.9.4";
     private static final int FILE_REQUEST = 4102;
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
     private volatile boolean mediaActive = false;
+    private final Handler bgHandler = new Handler(Looper.getMainLooper());
+    private Runnable bgKeepAlive;
 
     private final BroadcastReceiver playbackReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -44,9 +51,8 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(9, 10, 11));
         setContentView(webView);
-        // YouTube iframe needs third-party cookies or playback silently fails in WebView
         try {
-            android.webkit.CookieManager cm = android.webkit.CookieManager.getInstance();
+            CookieManager cm = CookieManager.getInstance();
             cm.setAcceptCookie(true);
             if (Build.VERSION.SDK_INT >= 21) {
                 cm.setAcceptThirdPartyCookies(webView, true);
@@ -77,20 +83,19 @@ public class MainActivity extends Activity {
         settings.setUserAgentString(settings.getUserAgentString() + " AbhiMusicAndroid/" + APP_VERSION);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setOffscreenPreRaster(true);
-        // Critical for background audio: allow media without a visible window
         if (Build.VERSION.SDK_INT >= 17) {
             settings.setMediaPlaybackRequiresUserGesture(false);
         }
         if (Build.VERSION.SDK_INT >= 26) {
             webView.getSettings().setSafeBrowsingEnabled(true);
         }
+        try { webView.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Exception ignored) {}
 
         webView.addJavascriptInterface(new AndroidBridge(), "AbhiAndroid");
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String host = uri.getHost() == null ? "" : uri.getHost();
-                // Keep in-app: app origin + YouTube / Google media (iframe embeds)
                 if (host.endsWith("vercel.app") || host.contains("abhi-music")
                         || host.contains("youtube.com") || host.contains("youtu.be")
                         || host.contains("googlevideo.com") || host.contains("google.com")
@@ -132,6 +137,33 @@ public class MainActivity extends Activity {
         if (state == null) webView.loadUrl(APP_URL); else webView.restoreState(state);
     }
 
+    private void keepWebAlive() {
+        if (webView == null) return;
+        try { webView.resumeTimers(); } catch (Exception ignored) {}
+        try { webView.onResume(); } catch (Exception ignored) {}
+        webView.evaluateJavascript(
+            "window.__abhiForceBackgroundPlay && window.__abhiForceBackgroundPlay()", null);
+    }
+
+    private void armKeepAliveLoop() {
+        if (bgKeepAlive != null) bgHandler.removeCallbacks(bgKeepAlive);
+        bgKeepAlive = new Runnable() {
+            @Override public void run() {
+                if (!mediaActive || webView == null) return;
+                keepWebAlive();
+                bgHandler.postDelayed(this, 8000);
+            }
+        };
+        bgHandler.postDelayed(bgKeepAlive, 2500);
+    }
+
+    private void stopKeepAliveLoop() {
+        if (bgKeepAlive != null) {
+            bgHandler.removeCallbacks(bgKeepAlive);
+            bgKeepAlive = null;
+        }
+    }
+
     public class AndroidBridge {
         @JavascriptInterface public void play(String url, String title, String artist, String artwork) {
             Intent i = PlaybackService.intent(MainActivity.this, PlaybackService.ACTION_PLAY);
@@ -158,10 +190,16 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void setVideoActive(boolean active) {
             mediaActive = active;
+            if (active) {
+                runOnUiThread(() -> {
+                    keepWebAlive();
+                    armKeepAliveLoop();
+                });
+            } else {
+                runOnUiThread(MainActivity.this::stopKeepAliveLoop);
+            }
         }
-        @JavascriptInterface public void enterPip() {
-            // Spotify-style: do nothing. Background audio needs no floating window.
-        }
+        @JavascriptInterface public void enterPip() {}
         @JavascriptInterface public void startBackground(String title, String artist, String artwork) {
             mediaActive = true;
             Intent i = PlaybackService.intent(MainActivity.this, PlaybackService.ACTION_WEB_SESSION);
@@ -170,6 +208,10 @@ public class MainActivity extends Activity {
             i.putExtra("artwork", artwork == null ? "" : artwork);
             i.putExtra("playing", true);
             startForegroundServiceCompat(i);
+            runOnUiThread(() -> {
+                keepWebAlive();
+                armKeepAliveLoop();
+            });
         }
         @JavascriptInterface public void updateBackground(boolean playing, String title, String artist) {
             mediaActive = playing;
@@ -178,10 +220,19 @@ public class MainActivity extends Activity {
             if (title != null) i.putExtra("title", title);
             if (artist != null) i.putExtra("artist", artist);
             startForegroundServiceCompat(i);
+            if (playing) {
+                runOnUiThread(() -> {
+                    keepWebAlive();
+                    armKeepAliveLoop();
+                });
+            } else {
+                runOnUiThread(MainActivity.this::stopKeepAliveLoop);
+            }
         }
         @JavascriptInterface public void stopBackground() {
             mediaActive = false;
             startForegroundServiceCompat(PlaybackService.intent(MainActivity.this, PlaybackService.ACTION_WEB_STOP));
+            runOnUiThread(MainActivity.this::stopKeepAliveLoop);
         }
         @JavascriptInterface public void setPreset(int preset) {
             Intent i = PlaybackService.intent(MainActivity.this, PlaybackService.ACTION_PRESET);
@@ -212,10 +263,18 @@ public class MainActivity extends Activity {
                 Toast.LENGTH_LONG).show());
         }
         @JavascriptInterface public String getVersion() {
-            return APP_VERSION + " · Spotify-bg · Native";
+            return APP_VERSION + " · Spotify-bg · Home/Back safe";
         }
         @JavascriptInterface public boolean isNativeApp() { return true; }
         @JavascriptInterface public boolean supportsBackgroundWithoutPip() { return true; }
+        @JavascriptInterface public void moveToBackground() {
+            runOnUiThread(() -> {
+                mediaActive = true;
+                keepWebAlive();
+                armKeepAliveLoop();
+                moveTaskToBack(true);
+            });
+        }
     }
 
     private void startForegroundServiceCompat(Intent i) {
@@ -232,46 +291,62 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
-        webView.saveState(out);
+        if (webView != null) webView.saveState(out);
         super.onSaveInstanceState(out);
     }
 
     @Override public void onBackPressed() {
-        if (webView.canGoBack()) webView.goBack(); else super.onBackPressed();
+        if (mediaActive) {
+            keepWebAlive();
+            armKeepAliveLoop();
+            if (webView != null) {
+                webView.evaluateJavascript(
+                    "window.__abhiForceBackgroundPlay && window.__abhiForceBackgroundPlay()", null);
+            }
+            moveTaskToBack(true);
+            return;
+        }
+        if (webView != null && webView.canGoBack()) webView.goBack();
+        else super.onBackPressed();
     }
 
-    /**
-     * Spotify-style: do NOT pause WebView media when app backgrounds.
-     * Do NOT enter PiP. Foreground service keeps the process alive.
-     */
     @Override protected void onPause() {
         super.onPause();
-        // Intentionally NOT calling webView.onPause() — that would stop YouTube/HTML audio.
+        if (webView != null) {
+            try { webView.resumeTimers(); } catch (Exception ignored) {}
+        }
+        if (mediaActive) {
+            keepWebAlive();
+            armKeepAliveLoop();
+        }
     }
 
     @Override protected void onResume() {
         super.onResume();
+        stopKeepAliveLoop();
         if (webView != null) {
             try { webView.onResume(); } catch (Exception ignored) {}
+            try { webView.resumeTimers(); } catch (Exception ignored) {}
         }
     }
 
     @Override protected void onStop() {
         super.onStop();
-        // Keep WebView rendering / media; no PiP.
         if (mediaActive && webView != null) {
-            // Nudge JS so MediaSession / keep-alive stays fresh
+            keepWebAlive();
+            armKeepAliveLoop();
             webView.evaluateJavascript(
-                "window.__abhiOnBackground && window.__abhiOnBackground()", null);
+                "window.__abhiForceBackgroundPlay && window.__abhiForceBackgroundPlay()", null);
         }
     }
 
     @Override protected void onUserLeaveHint() {
         super.onUserLeaveHint();
-        // No PiP — Spotify-style audio continues under the media notification.
         if (mediaActive && webView != null) {
+            keepWebAlive();
+            armKeepAliveLoop();
             webView.evaluateJavascript(
-                "window.__abhiOnBackground && window.__abhiOnBackground()", null);
+                "window.__abhiForceBackgroundPlay && window.__abhiForceBackgroundPlay()", null);
         }
     }
 
@@ -283,6 +358,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        stopKeepAliveLoop();
         try { unregisterReceiver(playbackReceiver); } catch (Exception ignored) {}
         super.onDestroy();
     }
