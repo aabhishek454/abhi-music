@@ -61,33 +61,34 @@ jobs:
           APK=$(find android/app/build/outputs/apk -type f -name '*.apk' | head -n 1)
           echo "Found: $APK"
           test -n "$APK"
-          cp "$APK" dist/AbhiMusic-v1.9.2.apk
-          ls -lh dist/AbhiMusic-v1.9.2.apk
+          cp "$APK" dist/AbhiMusic-v1.9.3.apk
+          ls -lh dist/AbhiMusic-v1.9.3.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AbhiMusic-v1.9.2-apk
-          path: dist/AbhiMusic-v1.9.2.apk
+          name: AbhiMusic-v1.9.3-apk
+          path: dist/AbhiMusic-v1.9.3.apk
 
       - name: Publish public release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.9.2
-          name: Abhi Music v1.9.2 — Android APK
+          tag_name: v1.9.3
+          name: Abhi Music v1.9.3 — Android APK
           draft: false
           prerelease: false
           make_latest: true
           fail_on_unmatched_files: true
           body: |
-            ## Abhi Music for Android **v1.9.2**
+            ## Abhi Music for Android **v1.9.3**
 
-            Download **AbhiMusic-v1.9.2.apk** below.
+            Download **AbhiMusic-v1.9.3.apk** below.
 
-            ### Spotify-style background (no PiP)
-            - Music keeps playing when you leave the app or lock the screen
-            - Media notification + lock-screen play/pause/next
-            - No floating Picture-in-Picture window
-            - Mini player plays instantly without opening full screen
+            ### Fixed in v1.9.3
+            - **Songs play again in the APK** — background service no longer steals audio focus from YouTube/WebView
+            - Third-party cookies enabled for YouTube iframe playback
+            - Spotify-style background (no floating PiP)
+            - Mini player play-first (no forced full window)
+            - Media notification + lock-screen controls
 
             ### Install
             1. Download on your phone
@@ -98,6 +99,6 @@ jobs:
 
             Web: https://abhi-music-amber.vercel.app
 
-          files: dist/AbhiMusic-v1.9.2.apk
+          files: dist/AbhiMusic-v1.9.3.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
