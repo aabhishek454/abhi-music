@@ -16,7 +16,7 @@ import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://abhi-music-amber.vercel.app";
-    private static final String APP_VERSION = "1.8.0";
+    private static final String APP_VERSION = "1.9.1";
     private static final int FILE_REQUEST = 4102;
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setUserAgentString(settings.getUserAgentString() + " AbhiMusicAndroid/" + APP_VERSION);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setOffscreenPreRaster(true);
 
         if (Build.VERSION.SDK_INT >= 26) {
             webView.getSettings().setSafeBrowsingEnabled(true);
@@ -129,7 +130,8 @@ public class MainActivity extends Activity {
     @Override public void onBackPressed() { if (webView.canGoBack()) webView.goBack(); else super.onBackPressed(); }
     private void enterPipMode(){if(videoActive&&Build.VERSION.SDK_INT>=26&&!isInPictureInPictureMode()){try{android.app.PictureInPictureParams p=new android.app.PictureInPictureParams.Builder().setAspectRatio(new android.util.Rational(16,9)).build();enterPictureInPictureMode(p);}catch(Exception e){Toast.makeText(this,"Enable Picture-in-Picture for Abhi Music in Android settings",Toast.LENGTH_LONG).show();}}}
     @Override protected void onUserLeaveHint(){super.onUserLeaveHint();enterPipMode();}
-    @Override protected void onPause(){super.onPause();if(videoActive&&Build.VERSION.SDK_INT>=26)new Handler(Looper.getMainLooper()).postDelayed(this::enterPipMode,120);}
+    @Override protected void onPause(){super.onPause();/* keep WebView media playing in background */if(videoActive&&Build.VERSION.SDK_INT>=26)new Handler(Looper.getMainLooper()).postDelayed(this::enterPipMode,80);}
+    @Override protected void onStop(){super.onStop();if(videoActive&&Build.VERSION.SDK_INT>=26&&!isInPictureInPictureMode())enterPipMode();}
     @Override public void onPictureInPictureModeChanged(boolean inPip,android.content.res.Configuration config){super.onPictureInPictureModeChanged(inPip,config);if(webView!=null)webView.evaluateJavascript("document.documentElement.classList."+(inPip?"add":"remove")+"('pip-mode')",null);}
     @Override protected void onDestroy() { try { unregisterReceiver(playbackReceiver); } catch(Exception ignored) {} super.onDestroy(); }
 }
