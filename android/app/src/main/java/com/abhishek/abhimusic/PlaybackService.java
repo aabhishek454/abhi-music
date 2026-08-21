@@ -31,7 +31,7 @@ public class PlaybackService extends MediaBrowserService {
     private Bitmap albumArt;
     private AudioManager audioManager;
     private boolean prepared=false;
-    private boolean webMode=false;
+    private boolean webMode=false; /* Spotify-style: keep-alive for YouTube/HTML via WebView */
     private BassBoost bassBoost;
     private Equalizer equalizer;
     private int currentPreset=0;
@@ -87,15 +87,20 @@ public class PlaybackService extends MediaBrowserService {
         return START_STICKY;
     }
 
+    /** Spotify-style keep-alive for YouTube / HTML audio played inside the WebView. */
     private void startWebSession(Intent intent){
         webMode=true;
+        // Stop native MediaPlayer so it doesn't fight WebView audio
         if(player!=null){try{player.stop();}catch(Exception ignored){}releasePlayer();}
         title=intent.getStringExtra("title"); if(title==null)title="Abhi Music";
         artist=intent.getStringExtra("artist"); if(artist==null)artist="Playing";
         artwork=intent.getStringExtra("artwork"); if(artwork==null)artwork="";
         albumArt=null;
         boolean playing=intent.getBooleanExtra("playing",true);
-        requestAudioFocus();
+        // CRITICAL: do NOT requestAudioFocus in webMode.
+        // WebView / YouTube iframe already owns the audio stream.
+        // Requesting AUDIOFOCUS_GAIN here steals focus and pauses songs in the APK.
+        // MediaSession + FGS still drive lock-screen/notification controls.
         session.setActive(true);
         session.setMetadata(new android.media.MediaMetadata.Builder()
             .putString(android.media.MediaMetadata.METADATA_KEY_TITLE,title)
@@ -171,7 +176,7 @@ public class PlaybackService extends MediaBrowserService {
     private void playNext(){if(webMode){sendCommand("next");return;}if(currentMixIndex>=0)playMixIndex(currentMixIndex+1);else sendCommand("next");}
     private void playPrevious(){if(webMode){sendCommand("previous");return;}if(currentMixIndex>=0)playMixIndex(currentMixIndex-1);else sendCommand("previous");}
     private void setupEffects(){releaseEffects();try{bassBoost=new BassBoost(0,player.getAudioSessionId());bassBoost.setEnabled(true);equalizer=new Equalizer(0,player.getAudioSessionId());equalizer.setEnabled(true);}catch(Exception ignored){}}
-    private void applyPreset(){if(!prepared)return;try{if(bassBoost!=null)bassBoost.setStrength((short)(currentPreset==1?900:currentPreset==3?250:0));if(equalizer!=null){short bands=equalizer.getNumberOfBands();for(short i=0;i<bands;i++)equalizer.setBandLevel(i,(short)0);if(currentPreset==2&&bands>2){equalizer.setBandLevel((short)(bands/2),(short)Math.min(1000,equalizer.getBandLevelRange()[1]));}else if(currentPreset==1){for(short i=0;i<Math.min(2,bands);i++)equalizer.setBandLevel(i,(short)Math.min(1200,equalizer.getBandLevelRange()[1]));}}if(player!=null)player.setVolume(currentPreset==3?.65f:1f,currentPreset==3?.65f:1f);}catch(Exception ignored){}}
+    private void applyPreset(){if(!prepared)return;try{if(bassBoost!=null)bassBoost.setStrength((short)(currentPreset==1?900:currentPreset==3?250:0));if(equalizer!=null){short bands=equalizer.getNumberOfBands();for(short i=0;i<Math.min(bands,bands);i++)equalizer.setBandLevel(i,(short)0);if(currentPreset==2&&bands>2){equalizer.setBandLevel((short)(bands/2),(short)Math.min(1000,equalizer.getBandLevelRange()[1]));}else if(currentPreset==1){for(short i=0;i<Math.min(2,bands);i++)equalizer.setBandLevel(i,(short)Math.min(1200,equalizer.getBandLevelRange()[1]));}}if(player!=null)player.setVolume(currentPreset==3?.65f:1f,currentPreset==3?.65f:1f);}catch(Exception ignored){}}
     private void applySpeed(){if(!prepared||player==null)return;try{player.setPlaybackParams(player.getPlaybackParams().setSpeed(playbackSpeed));}catch(Exception ignored){}}
     private void releaseEffects(){try{if(bassBoost!=null)bassBoost.release();}catch(Exception ignored){}try{if(equalizer!=null)equalizer.release();}catch(Exception ignored){}bassBoost=null;equalizer=null;}
     private File cachedFile(String url){File dir=new File(getFilesDir(),"offline_mix");if(!dir.exists())dir.mkdirs();String name=url.substring(url.lastIndexOf('/')+1).replaceAll("[^a-zA-Z0-9._-]","_");return new File(dir,name);}
@@ -180,7 +185,13 @@ public class PlaybackService extends MediaBrowserService {
     private void requestAudioFocus(){
         if(Build.VERSION.SDK_INT>=26){AudioFocusRequest req=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()).setOnAudioFocusChangeListener(this::onFocus).build();audioManager.requestAudioFocus(req);}else audioManager.requestAudioFocus(f->onFocus(f),AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
     }
-    private void onFocus(int focus){if(focus==AudioManager.AUDIOFOCUS_LOSS||focus==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)pausePlayback();else if(focus==AudioManager.AUDIOFOCUS_GAIN&&player!=null&&prepared&&!isPlayingSafe())resumePlayback();else if(focus==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK&&player!=null)player.setVolume(.25f,.25f);}
+    private void onFocus(int focus){
+        // webMode: WebView owns audio — never pause/resume YT from focus callbacks
+        if(webMode)return;
+        if(focus==AudioManager.AUDIOFOCUS_LOSS||focus==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)pausePlayback();
+        else if(focus==AudioManager.AUDIOFOCUS_GAIN&&player!=null&&prepared&&!isPlayingSafe())resumePlayback();
+        else if(focus==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK&&player!=null)player.setVolume(.25f,.25f);
+    }
     private void pausePlayback(){
         if(webMode){sendCommand("pause");session.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS|PlaybackState.ACTION_STOP).setState(PlaybackState.STATE_PAUSED,0,0f).build());((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID,buildWebNotification(false));AbhiMusicWidget.update(this,title,artist,false);return;}
         if(isPlayingSafe()){player.pause();updateState();notifyPlayer();sendState(null);}
