@@ -14,13 +14,13 @@ import android.widget.Toast;
 import org.json.JSONObject;
 
 /**
- * Abhi Music — Spotify-style background audio (no forced PiP).
+ * Abhi Music v1.9.3 — Spotify-style background; fixed WebView audio focus so songs play.
  * WebView media keeps playing when the app is backgrounded; a media
  * foreground service holds the process + shows lock-screen controls.
  */
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://abhi-music-amber.vercel.app";
-    private static final String APP_VERSION = "1.9.2";
+    private static final String APP_VERSION = "1.9.3";
     private static final int FILE_REQUEST = 4102;
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
@@ -44,6 +44,14 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(9, 10, 11));
         setContentView(webView);
+        // YouTube iframe needs third-party cookies or playback silently fails in WebView
+        try {
+            android.webkit.CookieManager cm = android.webkit.CookieManager.getInstance();
+            cm.setAcceptCookie(true);
+            if (Build.VERSION.SDK_INT >= 21) {
+                cm.setAcceptThirdPartyCookies(webView, true);
+            }
+        } catch (Exception ignored) {}
         webView.setOnApplyWindowInsetsListener((view, insets) -> {
             int top, bottom;
             if (Build.VERSION.SDK_INT >= 30) {
@@ -69,6 +77,7 @@ public class MainActivity extends Activity {
         settings.setUserAgentString(settings.getUserAgentString() + " AbhiMusicAndroid/" + APP_VERSION);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setOffscreenPreRaster(true);
+        // Critical for background audio: allow media without a visible window
         if (Build.VERSION.SDK_INT >= 17) {
             settings.setMediaPlaybackRequiresUserGesture(false);
         }
@@ -80,7 +89,12 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                if (uri.getHost() != null && (uri.getHost().endsWith("vercel.app") || uri.getHost().contains("abhi-music")))
+                String host = uri.getHost() == null ? "" : uri.getHost();
+                // Keep in-app: app origin + YouTube / Google media (iframe embeds)
+                if (host.endsWith("vercel.app") || host.contains("abhi-music")
+                        || host.contains("youtube.com") || host.contains("youtu.be")
+                        || host.contains("googlevideo.com") || host.contains("google.com")
+                        || host.contains("ytimg.com") || host.contains("gstatic.com"))
                     return false;
                 try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); } catch (Exception ignored) {}
                 return true;
@@ -226,6 +240,10 @@ public class MainActivity extends Activity {
         if (webView.canGoBack()) webView.goBack(); else super.onBackPressed();
     }
 
+    /**
+     * Spotify-style: do NOT pause WebView media when app backgrounds.
+     * Do NOT enter PiP. Foreground service keeps the process alive.
+     */
     @Override protected void onPause() {
         super.onPause();
         // Intentionally NOT calling webView.onPause() — that would stop YouTube/HTML audio.
@@ -240,7 +258,9 @@ public class MainActivity extends Activity {
 
     @Override protected void onStop() {
         super.onStop();
+        // Keep WebView rendering / media; no PiP.
         if (mediaActive && webView != null) {
+            // Nudge JS so MediaSession / keep-alive stays fresh
             webView.evaluateJavascript(
                 "window.__abhiOnBackground && window.__abhiOnBackground()", null);
         }
@@ -248,6 +268,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onUserLeaveHint() {
         super.onUserLeaveHint();
+        // No PiP — Spotify-style audio continues under the media notification.
         if (mediaActive && webView != null) {
             webView.evaluateJavascript(
                 "window.__abhiOnBackground && window.__abhiOnBackground()", null);
