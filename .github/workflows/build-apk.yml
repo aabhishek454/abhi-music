@@ -45,14 +45,11 @@ jobs:
         run: |
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/tmp/licenses.log 2>&1 || true
           sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-          ls -la "$ANDROID_HOME/platforms"
-          ls -la "$ANDROID_HOME/build-tools"
 
       - name: Build release APK
         working-directory: android
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          cat local.properties
           gradle assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
@@ -61,44 +58,48 @@ jobs:
           APK=$(find android/app/build/outputs/apk -type f -name '*.apk' | head -n 1)
           echo "Found: $APK"
           test -n "$APK"
-          cp "$APK" dist/AbhiMusic-v1.9.3.apk
-          ls -lh dist/AbhiMusic-v1.9.3.apk
+          cp "$APK" dist/AbhiMusic-v1.9.4.apk
+          ls -lh dist/AbhiMusic-v1.9.4.apk
+          SIZE=$(stat -c%s dist/AbhiMusic-v1.9.4.apk)
+          echo "APK bytes: $SIZE"
+          test "$SIZE" -gt 20000
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AbhiMusic-v1.9.3-apk
-          path: dist/AbhiMusic-v1.9.3.apk
+          name: AbhiMusic-v1.9.4-apk
+          path: dist/AbhiMusic-v1.9.4.apk
 
       - name: Publish public release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.9.3
-          name: Abhi Music v1.9.3 — Android APK
+          tag_name: v1.9.4
+          name: Abhi Music v1.9.4 — Android APK
           draft: false
           prerelease: false
           make_latest: true
           fail_on_unmatched_files: true
           body: |
-            ## Abhi Music for Android **v1.9.3**
+            ## Abhi Music for Android **v1.9.4**
 
-            Download **AbhiMusic-v1.9.3.apk** below.
+            Download **AbhiMusic-v1.9.4.apk** below.
 
-            ### Fixed in v1.9.3
-            - **Songs play again in the APK** — background service no longer steals audio focus from YouTube/WebView
-            - Third-party cookies enabled for YouTube iframe playback
-            - Spotify-style background (no floating PiP)
-            - Mini player play-first (no forced full window)
-            - Media notification + lock-screen controls
+            ### Fixed: music keeps playing when you leave the app
+            - **Home / multi-task / Back** — audio continues (no stop)
+            - Back no longer kills the player (app hides like Spotify)
+            - WebView timers stay alive; force-resume YouTube/HTML in background
+            - Wake lock + foreground service keep process alive
+            - Songs play again (audio-focus fix from 1.9.3)
+            - Mini player play-first · no floating PiP
 
             ### Install
-            1. Download on your phone
-            2. Allow *Install unknown apps*
-            3. Open → Install
+            1. Uninstall old Abhi Music (recommended)
+            2. Download this APK on your phone
+            3. Allow *Install unknown apps*
+            4. Open → Install
 
             Android 7+ · package `com.abhishek.abhimusic`
 
             Web: https://abhi-music-amber.vercel.app
-
-          files: dist/AbhiMusic-v1.9.3.apk
+          files: dist/AbhiMusic-v1.9.4.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
