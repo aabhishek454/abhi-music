@@ -17,12 +17,11 @@ import android.os.*;
 import java.util.*;
 import java.net.URL;
 import java.io.*;
-import java.security.MessageDigest;
 import org.json.JSONObject;
 
 public class PlaybackService extends MediaBrowserService {
     public static final String BROADCAST_STATE="com.abhishek.abhimusic.PLAYBACK_STATE";
-    public static final String ACTION_PLAY="play", ACTION_PAUSE="pause", ACTION_RESUME="resume", ACTION_SEEK="seek", ACTION_VOLUME="volume", ACTION_NEXT="next", ACTION_PREVIOUS="previous", ACTION_STOP="stop", ACTION_PRESET="preset", ACTION_SPEED="speed", ACTION_DOWNLOAD_MIX="download_mix";
+    public static final String ACTION_PLAY="play", ACTION_PAUSE="pause", ACTION_RESUME="resume", ACTION_SEEK="seek", ACTION_VOLUME="volume", ACTION_NEXT="next", ACTION_PREVIOUS="previous", ACTION_STOP="stop", ACTION_PRESET="preset", ACTION_SPEED="speed", ACTION_DOWNLOAD_MIX="download_mix", ACTION_WEB_SESSION="web_session", ACTION_WEB_UPDATE="web_update", ACTION_WEB_STOP="web_stop";
     private static final String CHANNEL="abhi_music_playback";
     private static final int NOTIFICATION_ID=8219;
     private MediaPlayer player;
@@ -32,6 +31,7 @@ public class PlaybackService extends MediaBrowserService {
     private Bitmap albumArt;
     private AudioManager audioManager;
     private boolean prepared=false;
+    private boolean webMode=false;
     private BassBoost bassBoost;
     private Equalizer equalizer;
     private int currentPreset=0;
@@ -70,7 +70,7 @@ public class PlaybackService extends MediaBrowserService {
 
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         if(intent==null)return START_STICKY;String action=intent.getAction();
-        if(ACTION_PLAY.equals(action)){playUrl(intent.getStringExtra("url"),intent.getStringExtra("title"),intent.getStringExtra("artist"),intent.getStringExtra("artwork"));}
+        if(ACTION_PLAY.equals(action)){webMode=false;playUrl(intent.getStringExtra("url"),intent.getStringExtra("title"),intent.getStringExtra("artist"),intent.getStringExtra("artwork"));}
         else if(ACTION_PAUSE.equals(action))pausePlayback();
         else if(ACTION_RESUME.equals(action))resumePlayback();
         else if(ACTION_SEEK.equals(action)){if(player!=null&&prepared)player.seekTo(intent.getIntExtra("position",0));}
@@ -81,7 +81,77 @@ public class PlaybackService extends MediaBrowserService {
         else if(ACTION_NEXT.equals(action))playNext();
         else if(ACTION_PREVIOUS.equals(action))playPrevious();
         else if(ACTION_STOP.equals(action))stopPlayback();
+        else if(ACTION_WEB_SESSION.equals(action))startWebSession(intent);
+        else if(ACTION_WEB_UPDATE.equals(action))updateWebSession(intent);
+        else if(ACTION_WEB_STOP.equals(action))stopWebSession();
         return START_STICKY;
+    }
+
+    private void startWebSession(Intent intent){
+        webMode=true;
+        if(player!=null){try{player.stop();}catch(Exception ignored){}releasePlayer();}
+        title=intent.getStringExtra("title"); if(title==null)title="Abhi Music";
+        artist=intent.getStringExtra("artist"); if(artist==null)artist="Playing";
+        artwork=intent.getStringExtra("artwork"); if(artwork==null)artwork="";
+        albumArt=null;
+        boolean playing=intent.getBooleanExtra("playing",true);
+        requestAudioFocus();
+        session.setActive(true);
+        session.setMetadata(new android.media.MediaMetadata.Builder()
+            .putString(android.media.MediaMetadata.METADATA_KEY_TITLE,title)
+            .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST,artist)
+            .putString(android.media.MediaMetadata.METADATA_KEY_ALBUM,"Abhi Music")
+            .build());
+        session.setPlaybackState(new PlaybackState.Builder()
+            .setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS|PlaybackState.ACTION_STOP)
+            .setState(playing?PlaybackState.STATE_PLAYING:PlaybackState.STATE_PAUSED,0,playing?1f:0f)
+            .build());
+        startForeground(NOTIFICATION_ID,buildWebNotification(playing));
+        loadArtwork();
+        AbhiMusicWidget.update(this,title,artist,playing);
+    }
+
+    private void updateWebSession(Intent intent){
+        if(!webMode)return;
+        if(intent.hasExtra("title")){String t=intent.getStringExtra("title"); if(t!=null)title=t;}
+        if(intent.hasExtra("artist")){String a=intent.getStringExtra("artist"); if(a!=null)artist=a;}
+        boolean playing=intent.getBooleanExtra("playing",true);
+        session.setMetadata(new android.media.MediaMetadata.Builder()
+            .putString(android.media.MediaMetadata.METADATA_KEY_TITLE,title)
+            .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST,artist)
+            .putString(android.media.MediaMetadata.METADATA_KEY_ALBUM,"Abhi Music")
+            .build());
+        session.setPlaybackState(new PlaybackState.Builder()
+            .setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS|PlaybackState.ACTION_STOP)
+            .setState(playing?PlaybackState.STATE_PLAYING:PlaybackState.STATE_PAUSED,0,playing?1f:0f)
+            .build());
+        ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID,buildWebNotification(playing));
+        AbhiMusicWidget.update(this,title,artist,playing);
+    }
+
+    private void stopWebSession(){
+        webMode=false;
+        session.setPlaybackState(new PlaybackState.Builder().setState(PlaybackState.STATE_STOPPED,0,0f).build());
+        stopForeground(true);
+    }
+
+    private Notification buildWebNotification(boolean playing){
+        PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification.Action prev=new Notification.Action(android.R.drawable.ic_media_previous,"Previous",servicePending(ACTION_PREVIOUS,11));
+        Notification.Action toggle=new Notification.Action(playing?android.R.drawable.ic_media_pause:android.R.drawable.ic_media_play,playing?"Pause":"Play",servicePending(playing?ACTION_PAUSE:ACTION_RESUME,12));
+        Notification.Action next=new Notification.Action(android.R.drawable.ic_media_next,"Next",servicePending(ACTION_NEXT,13));
+        Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(this,CHANNEL):new Notification.Builder(this);
+        b.setSmallIcon(android.R.drawable.ic_media_play)
+         .setContentTitle(title)
+         .setContentText(artist+" · Background")
+         .setContentIntent(open)
+         .setOngoing(playing)
+         .setShowWhen(false)
+         .setVisibility(Notification.VISIBILITY_PUBLIC)
+         .addAction(prev).addAction(toggle).addAction(next)
+         .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0,1,2));
+        if(albumArt!=null)b.setLargeIcon(albumArt);
+        return b.build();
     }
 
     private void playUrl(String url,String t,String a,String art){
@@ -98,8 +168,8 @@ public class PlaybackService extends MediaBrowserService {
 
     private void playMixById(String id){for(int i=0;i<MIX_IDS.length;i++)if(MIX_IDS[i].equals(id)){playMixIndex(i);return;}}
     private void playMixIndex(int index){index=(index+MIX_URLS.length)%MIX_URLS.length;playUrl(MIX_URLS[index],MIX_TITLES[index],MIX_ARTIST,MIX_ARTWORK);}
-    private void playNext(){if(currentMixIndex>=0)playMixIndex(currentMixIndex+1);else sendCommand("next");}
-    private void playPrevious(){if(currentMixIndex>=0)playMixIndex(currentMixIndex-1);else sendCommand("previous");}
+    private void playNext(){if(webMode){sendCommand("next");return;}if(currentMixIndex>=0)playMixIndex(currentMixIndex+1);else sendCommand("next");}
+    private void playPrevious(){if(webMode){sendCommand("previous");return;}if(currentMixIndex>=0)playMixIndex(currentMixIndex-1);else sendCommand("previous");}
     private void setupEffects(){releaseEffects();try{bassBoost=new BassBoost(0,player.getAudioSessionId());bassBoost.setEnabled(true);equalizer=new Equalizer(0,player.getAudioSessionId());equalizer.setEnabled(true);}catch(Exception ignored){}}
     private void applyPreset(){if(!prepared)return;try{if(bassBoost!=null)bassBoost.setStrength((short)(currentPreset==1?900:currentPreset==3?250:0));if(equalizer!=null){short bands=equalizer.getNumberOfBands();for(short i=0;i<bands;i++)equalizer.setBandLevel(i,(short)0);if(currentPreset==2&&bands>2){equalizer.setBandLevel((short)(bands/2),(short)Math.min(1000,equalizer.getBandLevelRange()[1]));}else if(currentPreset==1){for(short i=0;i<Math.min(2,bands);i++)equalizer.setBandLevel(i,(short)Math.min(1200,equalizer.getBandLevelRange()[1]));}}if(player!=null)player.setVolume(currentPreset==3?.65f:1f,currentPreset==3?.65f:1f);}catch(Exception ignored){}}
     private void applySpeed(){if(!prepared||player==null)return;try{player.setPlaybackParams(player.getPlaybackParams().setSpeed(playbackSpeed));}catch(Exception ignored){}}
@@ -111,8 +181,14 @@ public class PlaybackService extends MediaBrowserService {
         if(Build.VERSION.SDK_INT>=26){AudioFocusRequest req=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()).setOnAudioFocusChangeListener(this::onFocus).build();audioManager.requestAudioFocus(req);}else audioManager.requestAudioFocus(f->onFocus(f),AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
     }
     private void onFocus(int focus){if(focus==AudioManager.AUDIOFOCUS_LOSS||focus==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)pausePlayback();else if(focus==AudioManager.AUDIOFOCUS_GAIN&&player!=null&&prepared&&!isPlayingSafe())resumePlayback();else if(focus==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK&&player!=null)player.setVolume(.25f,.25f);}
-    private void pausePlayback(){if(isPlayingSafe()){player.pause();updateState();notifyPlayer();sendState(null);}}
-    private void resumePlayback(){if(player==null){android.content.SharedPreferences p=getSharedPreferences("playback",MODE_PRIVATE);String u=p.getString("url",null);if(u!=null){pendingSeek=p.getInt("position",0);playUrl(u,p.getString("title","Abhi Music"),p.getString("artist","Abhishek"),p.getString("artwork",""));}return;}if(prepared&&!isPlayingSafe()){player.start();updateState();notifyPlayer();sendState(null);}}
+    private void pausePlayback(){
+        if(webMode){sendCommand("pause");session.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS|PlaybackState.ACTION_STOP).setState(PlaybackState.STATE_PAUSED,0,0f).build());((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID,buildWebNotification(false));AbhiMusicWidget.update(this,title,artist,false);return;}
+        if(isPlayingSafe()){player.pause();updateState();notifyPlayer();sendState(null);}
+    }
+    private void resumePlayback(){
+        if(webMode){sendCommand("resume");session.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS|PlaybackState.ACTION_STOP).setState(PlaybackState.STATE_PLAYING,0,1f).build());((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID,buildWebNotification(true));AbhiMusicWidget.update(this,title,artist,true);return;}
+        if(player==null){android.content.SharedPreferences p=getSharedPreferences("playback",MODE_PRIVATE);String u=p.getString("url",null);if(u!=null){pendingSeek=p.getInt("position",0);playUrl(u,p.getString("title","Abhi Music"),p.getString("artist","Abhishek"),p.getString("artwork",""));}return;}if(prepared&&!isPlayingSafe()){player.start();updateState();notifyPlayer();sendState(null);}
+    }
     private void stopPlayback(){if(player!=null&&prepared)player.stop();releasePlayer();session.setActive(false);stopForeground(true);stopSelf();sendState("stopped");}
     private void updateState(){boolean playing=isPlayingSafe();long pos=player==null?0:player.getCurrentPosition();session.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_SEEK_TO|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS|PlaybackState.ACTION_STOP).setState(playing?PlaybackState.STATE_PLAYING:PlaybackState.STATE_PAUSED,pos,playing?1f:0f).build());}
 
