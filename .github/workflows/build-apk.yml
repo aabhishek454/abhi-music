@@ -15,6 +15,7 @@ jobs:
   build:
     name: Assemble Abhi Music APK
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,26 +28,28 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'tools platform-tools platforms;android-35 build-tools;35.0.0'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Accept licenses & build release APK
+      - name: Build release APK
         working-directory: android
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" || true
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           gradle assembleRelease --no-daemon --stacktrace
 
-      - name: List outputs
-        run: find android/app/build/outputs -type f -name '*.apk' -ls || true
-
-      - name: Rename APK
+      - name: Collect APK
         run: |
           mkdir -p dist
           APK=$(find android/app/build/outputs/apk -name '*.apk' | head -n 1)
+          echo "Found: $APK"
+          test -n "$APK"
           cp "$APK" dist/AbhiMusic-v1.8.0.apk
           ls -lh dist/
 
@@ -63,23 +66,23 @@ jobs:
           tag_name: v1.8.0-apk
           name: Abhi Music APK v1.8.0
           body: |
-            ## Abhi Music for Android v1.8.0
+            ## Abhi Music for Android **v1.8.0**
 
-            Install this APK on Android 7+.
+            Download `AbhiMusic-v1.8.0.apk` below and install on Android 7+.
 
-            ### What's included
-            - Full web app (v1.8 polish) via WebView
+            ### Included
+            - Web app v1.8 (full/preview badges, skeletons, polish)
             - Native background playback for free mix
-            - Notification / lock-screen controls
-            - EQ, speed, offline mix, Android Auto tree
-            - Picture-in-Picture for official videos
+            - Notification + lock-screen controls
+            - EQ · speed · offline mix · Android Auto
+            - Picture-in-Picture for YouTube videos
 
-            ### Install
-            1. Download `AbhiMusic-v1.8.0.apk`
-            2. On phone: allow *Install unknown apps* for your browser/Files
-            3. Open the APK and install
+            ### Install steps
+            1. Download the APK on your phone
+            2. Allow **Install unknown apps** for Files/Chrome
+            3. Open the APK → Install
 
-            App opens: https://abhi-music-amber.vercel.app
+            Live site: https://abhi-music-amber.vercel.app
           files: dist/AbhiMusic-v1.8.0.apk
           draft: false
           prerelease: false
