@@ -13,8 +13,8 @@ android {
         applicationId 'com.abhishek.abhimusic'
         minSdk 24
         targetSdk 35
-        versionCode 6
-        versionName '1.5.0'
+        versionCode 8
+        versionName '1.8.0'
     }
 
     signingConfigs {
@@ -31,9 +31,24 @@ android {
     lint { checkReleaseBuilds false; abortOnError false }
 
     buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
         release {
             minifyEnabled false
             signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE']
         }
     }
 }

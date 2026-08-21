@@ -2,26 +2,39 @@
 
 Native Android hybrid wrapper for Abhi Music.
 
-## Android features
+**Package:** `com.abhishek.abhimusic`  
+**Version:** 1.8.0  
+**Min Android:** 7.0 (API 24)
 
-- Package: `com.abhishek.abhimusic`
-- Android 7.0+ (API 24)
-- Native foreground playback service for licensed direct-audio tracks
-- Lock-screen and notification controls
-- Audio-focus handling for calls and other media
-- Wake-lock protected playback
-- Native file picker
-- Website interface delivered from the production Vercel app
+## Features
 
-YouTube playback remains inside the official visible player. The native foreground service is used only for direct audio such as Background Mix tracks.
+- Loads production site: https://abhi-music-amber.vercel.app
+- Foreground media playback service (Background Mix / direct audio)
+- Lock-screen + notification controls
+- Audio focus, EQ presets, speed, offline mix cache
+- Picture-in-Picture for YouTube video
+- Home screen widget + Android Auto browse tree
+- Native file picker for local music
 
-## Build
+## Download APK
 
-Set Android SDK/JDK paths and signing environment variables:
+1. Open **GitHub → Actions → Build APK** and wait for green
+2. Or open **Releases** for `AbhiMusic-v1.8.0.apk`
+3. On phone: allow install from browser/files, open the APK
+
+## Build locally
 
 ```bash
-export ABHI_KEYSTORE=/secure/path/abhi-music-release.jks
-export ABHI_STORE_PASSWORD='your-password'
-export ABHI_KEY_PASSWORD='your-password'
-gradle assembleRelease
+cd android
+# needs Android SDK + JDK 17
+gradle assembleRelease   # or ./gradlew if wrapper jar present
+# output: app/build/outputs/apk/release/app-release.apk
+```
+
+Optional release signing:
+
+```bash
+export ABHI_KEYSTORE=/path/to/abhi-music-release.jks
+export ABHI_STORE_PASSWORD='…'
+export ABHI_KEY_PASSWORD='…'
 ```

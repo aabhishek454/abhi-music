@@ -16,6 +16,7 @@ import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://abhi-music-amber.vercel.app";
+    private static final String APP_VERSION = "1.8.0";
     private static final int FILE_REQUEST = 4102;
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
@@ -52,19 +53,24 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setUserAgentString(settings.getUserAgentString() + " AbhiMusicAndroid/1.0");
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        settings.setUserAgentString(settings.getUserAgentString() + " AbhiMusicAndroid/" + APP_VERSION);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        if (Build.VERSION.SDK_INT >= 26) {
+            webView.getSettings().setSafeBrowsingEnabled(true);
+        }
 
         webView.addJavascriptInterface(new AndroidBridge(), "AbhiAndroid");
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                if (uri.getHost() != null && uri.getHost().endsWith("vercel.app")) return false;
-                startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                if (uri.getHost() != null && (uri.getHost().endsWith("vercel.app") || uri.getHost().contains("abhi-music"))) return false;
+                try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); } catch (Exception ignored) {}
                 return true;
             }
             @Override public void onPageFinished(WebView view, String url) {
-                view.evaluateJavascript("document.documentElement.classList.add('native-apk')", null);
+                view.evaluateJavascript("document.documentElement.classList.add('native-apk');document.documentElement.dataset.nativeVersion='"+APP_VERSION+"';", null);
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -101,10 +107,10 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void enterPip() { runOnUiThread(()->enterPipMode()); }
         @JavascriptInterface public void setPreset(int preset) { Intent i=PlaybackService.intent(MainActivity.this,PlaybackService.ACTION_PRESET);i.putExtra("preset",preset);startForegroundServiceCompat(i); }
         @JavascriptInterface public void setSpeed(double speed) { Intent i=PlaybackService.intent(MainActivity.this,PlaybackService.ACTION_SPEED);i.putExtra("speed",(float)speed);startForegroundServiceCompat(i); }
-        @JavascriptInterface public void downloadMix() { startForegroundServiceCompat(PlaybackService.intent(MainActivity.this,PlaybackService.ACTION_DOWNLOAD_MIX)); }
+        @JavascriptInterface public void downloadMix() { startForegroundServiceCompat(PlaybackService.intent(MainActivity.this, PlaybackService.ACTION_DOWNLOAD_MIX)); }
         @JavascriptInterface public void openBatterySettings() { runOnUiThread(()->{try{startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));}catch(Exception e){startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())));}}); }
-        @JavascriptInterface public void checkForUpdates() { runOnUiThread(()->Toast.makeText(MainActivity.this,"Abhi Music 1.1 is up to date",Toast.LENGTH_LONG).show()); }
-        @JavascriptInterface public String getVersion() { return "1.5.0 · Android Auto"; }
+        @JavascriptInterface public void checkForUpdates() { runOnUiThread(()->Toast.makeText(MainActivity.this,"Abhi Music "+APP_VERSION+" · check GitHub Releases for the latest APK",Toast.LENGTH_LONG).show()); }
+        @JavascriptInterface public String getVersion() { return APP_VERSION + " · Android Auto · Native"; }
         @JavascriptInterface public boolean isNativeApp() { return true; }
     }
 
