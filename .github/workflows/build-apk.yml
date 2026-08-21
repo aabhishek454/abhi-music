@@ -16,36 +16,35 @@ jobs:
     name: Assemble Abhi Music APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    container:
+      image: mingc/android-build-box:1.29.0
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install platform 34
-        run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
-          sdkmanager --list_installed | head -40
-
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
 
       - name: Build release APK
         working-directory: android
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle assembleRelease --no-daemon --stacktrace
+          java -version
+          echo "sdk.dir=$ANDROID_HOME" > local.properties || echo "sdk.dir=/opt/android-sdk" > local.properties
+          if [ -d /opt/android-sdk ]; then echo "sdk.dir=/opt/android-sdk" > local.properties; fi
+          if [ -d /usr/local/lib/android/sdk ]; then echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties; fi
+          if [ -n "$ANDROID_SDK_ROOT" ]; then echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties; fi
+          cat local.properties
+          ls -la /opt 2>/dev/null || true
+          ls -la /usr/local/lib/android 2>/dev/null || true
+          # Use system gradle or install wrapper
+          gradle wrapper --gradle-version 8.7 || true
+          chmod +x gradlew 2>/dev/null || true
+          if [ -x ./gradlew ]; then
+            ./gradlew assembleRelease --no-daemon --stacktrace
+          else
+            gradle assembleRelease --no-daemon --stacktrace
+          fi
 
       - name: Collect APK
         run: |
           mkdir -p dist
-          APK=$(find android/app/build/outputs/apk -name '*.apk' | head -n 1)
+          APK=$(find android/app/build/outputs/apk -name '*.apk' 2>/dev/null | head -n 1)
           echo "Found: $APK"
           test -n "$APK"
           cp "$APK" dist/AbhiMusic-v1.8.0.apk
@@ -64,13 +63,13 @@ jobs:
           body: |
             ## Abhi Music Android v1.8.0
 
-            Install `AbhiMusic-v1.8.0.apk` on Android 7+.
+            Download **AbhiMusic-v1.8.0.apk** and install on Android 7+.
 
-            1. Download the APK
-            2. Allow install from unknown sources
-            3. Open → Install
+            1. Download on phone
+            2. Allow unknown sources
+            3. Install
 
-            App loads: https://abhi-music-amber.vercel.app
+            Opens: https://abhi-music-amber.vercel.app
           files: dist/AbhiMusic-v1.8.0.apk
           make_latest: true
         env:
