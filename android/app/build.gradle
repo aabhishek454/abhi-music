@@ -7,12 +7,12 @@ def hasReleaseKey = releaseKeystore && releaseStorePassword && releaseKeyPasswor
 
 android {
     namespace 'com.abhishek.abhimusic'
-    compileSdk 35
+    compileSdk 34
 
     defaultConfig {
         applicationId 'com.abhishek.abhimusic'
         minSdk 24
-        targetSdk 35
+        targetSdk 34
         versionCode 8
         versionName '1.8.0'
     }
@@ -31,10 +31,6 @@ android {
     lint { checkReleaseBuilds false; abortOnError false }
 
     buildTypes {
-        debug {
-            applicationIdSuffix '.debug'
-            versionNameSuffix '-debug'
-        }
         release {
             minifyEnabled false
             signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
@@ -44,11 +40,5 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-
-    packaging {
-        resources {
-            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE']
-        }
     }
 }
