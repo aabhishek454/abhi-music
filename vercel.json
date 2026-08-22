@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/search", "dest": "/api/search.js" },
+    { "src": "/api/discover", "dest": "/api/discover.js" },
+    { "src": "/api/youtube", "dest": "/api/youtube.js" },
+    { "src": "/api/lyrics", "dest": "/api/lyrics.js" },
+    { "src": "/", "dest": "/public/index.html" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}
