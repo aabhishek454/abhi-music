@@ -434,6 +434,11 @@ document.addEventListener('DOMContentLoaded', () => {
   Router.init();
   UI.renderMini();
 
+  // Load live catalog (iTunes-backed) then refresh home
+  loadLive().then(ok => {
+    if (ok && ['home',''].includes(Router.current)) Router.render();
+  });
+
   if ('serviceWorker' in navigator && location.protocol==='https:') {
     navigator.serviceWorker.register('/sw.js').catch(()=>{});
   }

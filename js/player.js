@@ -15,7 +15,19 @@ const PlayerState = {
 const AudioEngine = {
   el: null,
   init() {
-    // Simulated playback engine (swap in a real <audio> element when tracks have src URLs)
+    this.el = new window.Audio();
+    this.el.volume = PlayerState.volume;
+    this.el.preload = 'auto';
+    this.el.addEventListener('timeupdate', () => UI.onTime(this.el.currentTime, this.el.duration));
+    this.el.addEventListener('ended', () => Player.next());
+    this.el.addEventListener('play',  () => { PlayerState.playing = true; UI.onPlayState(); });
+    this.el.addEventListener('pause', () => { PlayerState.playing = false; UI.onPlayState(); });
+    this.el.addEventListener('error', () => {
+      if (!this.el.src || this._failing === this.el.src) return;
+      this._failing = this.el.src;
+      UI.toast('Preview unavailable — skipping…');
+      setTimeout(() => Player.next(), 400);
+    });
   },
 };
 
@@ -37,10 +49,18 @@ const Player = {
   load(id) {
     const t = MusicService.getTrack(id);
     if (!t) return;
-    this._simulate(t);
+    clearInterval(this._sim);
+    if (t.preview || t.src) {
+      AudioEngine.el.src = t.preview || t.src;
+      AudioEngine.el.play().catch(() => { PlayerState.playing = true; UI.onPlayState(); });
+    } else {
+      this._simulate(t); // fallback for local demo tracks
+      PlayerState.playing = !PlayerState.playing ?? true;
+    }
     Player.addRecent(id);
     UI.renderPlayer();
     UI.renderQueue();
+    UI.renderMini();
     UI.applyAmbient(t);
     document.title = `${t.title} · ${t.artist} — ABHI MUSIC`;
   },
@@ -58,8 +78,12 @@ const Player = {
   seek(frac) {
     const t = MusicService.getTrack(this.current());
     if (!t) return;
-    this._pos = frac * t.dur;
-    UI.onTime(this._pos, t.dur);
+    if (AudioEngine.el && AudioEngine.el.src && isFinite(AudioEngine.el.duration)) {
+      AudioEngine.el.currentTime = frac * AudioEngine.el.duration;
+    } else {
+      this._pos = frac * t.dur;
+      UI.onTime(this._pos, t.dur);
+    }
   },
   current: () => PlayerState.queue[PlayerState.index],
 
@@ -69,12 +93,16 @@ const Player = {
       this.playTrack(t[0].id, t.map(x=>x.id));
       return;
     }
-    PlayerState.playing = !PlayerState.playing;
+    if (AudioEngine.el && AudioEngine.el.src) {
+      PlayerState.playing ? AudioEngine.el.pause() : AudioEngine.el.play().catch(()=>{});
+    } else {
+      PlayerState.playing = !PlayerState.playing;
+    }
     UI.onPlayState();
   },
   next() {
     if (!PlayerState.queue.length) return;
-    if (PlayerState.repeat === 'one') { this._pos = 0; return; }
+    if (PlayerState.repeat === 'one') { if (AudioEngine.el) { AudioEngine.el.currentTime = 0; AudioEngine.el.play().catch(()=>{}); } return; }
     if (PlayerState.shuffle) {
       let n; do { n = Math.floor(Math.random()*PlayerState.queue.length); } while (n === PlayerState.index && PlayerState.queue.length > 1);
       PlayerState.index = n;
@@ -89,7 +117,11 @@ const Player = {
   },
   prev() {
     if (!PlayerState.queue.length) return;
-    if (this._pos > 4) { this.seek(0); return; }
+    const cur = AudioEngine.el && AudioEngine.el.duration ? AudioEngine.el.currentTime : (this._pos||0);
+    if (cur > 4) {
+      if (AudioEngine.el && AudioEngine.el.src) AudioEngine.el.currentTime = 0; else this.seek(0);
+      return;
+    }
     PlayerState.index = (PlayerState.index - 1 + PlayerState.queue.length) % PlayerState.queue.length;
     this.load(PlayerState.queue[PlayerState.index]);
   },
@@ -101,9 +133,14 @@ const Player = {
   setVolume(v) {
     PlayerState.volume = Math.min(1, Math.max(0, v));
     PlayerState.muted = PlayerState.volume === 0;
+    if (AudioEngine.el) AudioEngine.el.volume = PlayerState.muted ? 0 : PlayerState.volume;
     UI.syncControls();
   },
-  toggleMute() { PlayerState.muted = !PlayerState.muted; UI.syncControls(); },
+  toggleMute() {
+    PlayerState.muted = !PlayerState.muted;
+    if (AudioEngine.el) AudioEngine.el.volume = PlayerState.muted ? 0 : PlayerState.volume;
+    UI.syncControls();
+  },
 
   toggleLike(id) {
     const s = PlayerState.liked;

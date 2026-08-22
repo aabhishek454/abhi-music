@@ -102,9 +102,38 @@ const LYRICS = {
 
 const GENRES = ['Electronic','Indie Pop','Alternative','Synthwave','Indie','Lo-Fi','Ambient','Pop'];
 
-/* --- Service layer (swap with real API later) --- */
+/* --- Service layer: live APIs with local demo fallback --- */
 const MusicService = {
-  getTrack: id => TRACKS.find(t => t.id === id),
+  _remote: { trending: null, discover: null },
+  _norm: t => t && ({
+    id: 'r'+t.id, title: t.title, artist: t.artist, album: t.album || 'Single',
+    art: t.artwork, preview: t.preview, dur: Math.round((t.duration||30000)/1000),
+    genre: t.genre, src: t.preview,
+  }),
+
+  async fetchDiscover() {
+    if (this._remote.discover) return this._remote.discover;
+    try {
+      const r = await fetch('/api/discover');
+      if (!r.ok) throw 0;
+      const d = await r.json();
+      const all = [...d.hero, ...d.trending, ...d.punjabi, ...d.pop, ...d.artist, ...d.chill]
+        .map(t => this._norm(t));
+      const uniq = [...new Map(all.map(t => [t.id, t])).values()];
+      this._remote.discover = uniq;
+      return uniq;
+    } catch { return null; }
+  },
+
+  async searchRemote(q) {
+    try {
+      const r = await fetch('/api/search?q=' + encodeURIComponent(q));
+      if (!r.ok) throw 0;
+      return (await r.json()).map(t => this._norm(t));
+    } catch { return null; }
+  },
+
+  getTrack: id => (window.REMOTE_INDEX && REMOTE_INDEX.get(id)) || TRACKS.find(t => t.id === id),
   getTracks: ids => ids.map(id => MusicService.getTrack(id)).filter(Boolean),
   getCollection: id => COLLECTIONS.find(c => c.id === id) || PLAYLISTS.find(p => p.id === id) || MOODS.find(m => m.id === id),
   getArtist: id => ARTISTS.find(a => a.id === id),
@@ -127,6 +156,9 @@ const MusicService = {
   popularArtists: () => [...ARTISTS],
   lyricsFor: () => LYRICS.default,
 };
+
+const REMOTE_INDEX = new Map();
+window.REMOTE_INDEX = REMOTE_INDEX; // live tracks registered here
 
 const fmtTime = s => {
   if (!isFinite(s)) return '0:00';

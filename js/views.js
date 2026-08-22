@@ -2,6 +2,32 @@
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* LIVE — remote tracks fetched from /api (iTunes-backed) */
+const LIVE = { trending:[], bollywood:[], punjabi:[], arijit:[], diljit:[], chill:[] };
+function registerRemote(tracks) {
+  tracks.forEach(t => window.REMOTE_INDEX.set(t.id, t));
+}
+async function loadLive() {
+  const d = await MusicService.fetchDiscover();
+  if (!d || !d.length) {
+    UI.toast('Live catalog unavailable — showing demo tracks');
+    return false;
+  }
+  // bucket by source term order returned from /api/discover
+  const buckets = { hero:'bollywood', trending:'trending', punjabi:'punjabi', pop:'arijit', artist:'diljit', chill:'chill' };
+  let idx = 0;
+  // fetchDiscover flattens; re-request raw for buckets
+  try {
+    const r = await fetch('/api/discover');
+    const raw = await r.json();
+    for (const [k, name] of Object.entries(buckets)) {
+      LIVE[name] = (raw[k]||[]).map(t => MusicService._norm(t));
+    }
+    Object.values(LIVE).forEach(registerRemote);
+    return true;
+  } catch { return false; }
+}
+
 /* ---------- shared fragments ---------- */
 function cardHTML(item, kind = 'collection') {
   if (kind === 'artist') {
@@ -40,8 +66,9 @@ function viewHome() {
   const hour = new Date().getHours();
   const greet = hour<12 ? 'Good Morning' : hour<17 ? 'Good Afternoon' : 'Good Evening';
   const recent = MusicService.getTracks(PlayerState.recent).slice(0,6);
-  const trending = MusicService.trending();
+  const trending = LIVE.trending.length ? LIVE.trending : MusicService.trending();
   const featured = trending[0];
+  const live = !!LIVE.trending.length;
 
   return `
   <div class="topbar mobile-only" style="position:static;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;">
@@ -54,37 +81,50 @@ function viewHome() {
         <h1 style="font-size:clamp(26px,4vw,36px);font-weight:800;letter-spacing:-.02em">${greet}, Abhi.</h1>
         <p style="color:var(--text-secondary);margin-top:4px">Your personal music universe awaits.</p>
       </div>
+      ${featured ? `
       <div class="hscroll">
         <article class="hero-card glass-elevated">
-          <img class="hero-art" src="${featured.art}" alt="">
-          <img class="hc-art" src="${featured.art}" alt="${esc(featured.album)}">
+          <img class="hero-art" src="${featured.art}" alt="" onerror="this.remove()">
+          <img class="hc-art" src="${featured.art}" alt="${esc(featured.album)}" onerror="this.style.visibility='hidden'">
           <div>
-            <span class="badge">Featured today</span>
+            <span class="badge">${live?'Live · Featured today':'Featured today'}</span>
             <h3>${esc(featured.title)}</h3>
-            <p>${esc(featured.artist)} — ${esc(featured.album)} · ${esc(featured.genre||'Music')}</p>
+            <p>${esc(featured.artist)} — ${esc(featured.album||'')} ${featured.genre?'· '+esc(featured.genre):''}</p>
             <button class="btn-primary" data-play="${featured.id}" data-ctx='${JSON.stringify(trending.map(t=>t.id))}'>${I.play} Play now</button>
           </div>
         </article>
-      </div>
+      </div>` : `<div class="skeleton" style="height:240px;border-radius:var(--r-xl)"></div>`}
     </section>
 
     ${recent.length ? `<section class="section">${sectionHead('Continue Listening')}<div class="hscroll">${recent.map(t=>trackWideCard(t)).join('')}</div></section>`:''}
 
-    <section class="section">${sectionHead('Made For You','library')}
-      <div class="grid-cards">${MusicService.madeForYou().map(p=>cardHTML(p,'playlist')).join('')}</div>
+    <section class="section">${sectionHead('Trending Now')}
+      <div class="tracklist">${trending.slice(0,8).map((t,i)=>trackRowHTML(t,i,trending.map(x=>x.id))).join('')}</div>
     </section>
 
-    <section class="section">${sectionHead('Trending Now')}
-      <div class="tracklist">${trending.slice(0,6).map((t,i)=>trackRowHTML(t,i,trending.map(x=>x.id))).join('')}</div>
+    ${LIVE.punjabi.length?`<section class="section">${sectionHead('Punjabi Hits')}
+      <div class="tracklist">${LIVE.punjabi.slice(0,6).map((t,i)=>trackRowHTML(t,i,LIVE.punjabi.map(x=>x.id))).join('')}</div></section>`:''}
+
+    ${LIVE.bollywood.length?`<section class="section">${sectionHead('Bollywood · Hero Picks')}
+      <div class="tracklist">${LIVE.bollywood.slice(0,6).map((t,i)=>trackRowHTML(t,i,LIVE.bollywood.map(x=>x.id))).join('')}</div></section>`:''}
+
+    ${LIVE.arijit.length?`<section class="section">${sectionHead('Arijit Singh')}
+      <div class="tracklist">${LIVE.arijit.slice(0,6).map((t,i)=>trackRowHTML(t,i,LIVE.arijit.map(x=>x.id))).join('')}</div></section>`:''}
+
+    ${LIVE.diljit.length?`<section class="section">${sectionHead('Diljit Dosanjh')}
+      <div class="tracklist">${LIVE.diljit.slice(0,6).map((t,i)=>trackRowHTML(t,i,LIVE.diljit.map(x=>x.id))).join('')}</div></section>`:''}
+
+    <section class="section">${sectionHead('Made For You','library')}
+      <div class="grid-cards">${MusicService.madeForYou().map(p=>cardHTML(p,'playlist')).join('')}</div>
     </section>
 
     <section class="section">${sectionHead('Popular Artists')}
       <div class="hscroll">${MusicService.popularArtists().map(a=>cardHTML(a,'artist')).join('')}</div>
     </section>
 
-    <section class="section">${sectionHead('New Releases')}
+    ${live?'':`<section class="section">${sectionHead('New Releases')}
       <div class="hscroll">${MusicService.newReleases().slice(0,8).map(c=>cardHTML(c)).join('')}</div>
-    </section>
+    </section>`}
 
     <section class="section">${sectionHead('Moods & Energy')}
       <div class="moods-grid">${MOODS.slice(0,8).map(moodTile).join('')}</div>
@@ -122,28 +162,37 @@ function viewSearch() {
   </div>`;
 }
 
-function renderSearchResults(q) {
+async function renderSearchResults(q) {
   _searchQ = q;
   const el = document.getElementById('searchResults');
   if (!el) return;
   const r = MusicService.search(q);
-  if (!r) { Router.render(); return; }
-  const top = r.tracks[0];
-  el.innerHTML = (!r.tracks.length && !r.artists.length && !r.albums.length && !r.playlists.length)
+  let remote = null;
+  if (q.trim().length >= 2) {
+    el.innerHTML = `<div class="skeleton" style="height:120px;border-radius:var(--r-large);margin-top:var(--s-4)"></div>`;
+    remote = await MusicService.searchRemote(q.trim());
+    registerRemote(remote || []);
+    // re-render local results too (input may have changed)
+    if (_searchQ !== q) return;
+  }
+  const liveTracks = remote || [];
+  const allTracks = [...liveTracks, ...(r?r.tracks:[])];
+  const top = allTracks[0];
+  el.innerHTML = (!allTracks.length && !(r&&r.artists.length) && !(r&&r.albums.length) && !(r&&r.playlists.length))
     ? emptyState('🔍',`No results for “${esc(q)}”`,'Try a different spelling or browse the moods below.')
     : `
     ${top ? `<section class="section"><div class="section-head"><h2>Top Result</h2></div>
       <article class="hero-card glass-elevated" style="min-width:100%">
-        <img class="hero-art" src="${top.art}" alt=""><img class="hc-art" src="${top.art}" alt="">
-        <div><span class="badge">Song</span><h3 style="font-size:24px">${esc(top.title)}</h3>
-        <p>${esc(top.artist)} · ${esc(top.album)}</p>
-        <button class="btn-primary" data-play="${top.id}" data-ctx='${JSON.stringify(r.tracks.map(t=>t.id))}'>${I.play} Play</button></div>
+        <img class="hero-art" src="${top.art}" alt="" onerror="this.remove()"><img class="hc-art" src="${top.art}" alt="" onerror="this.style.visibility='hidden'">
+        <div><span class="badge">${liveTracks.includes(top)?'Song · Live':'Song'}</span><h3 style="font-size:24px">${esc(top.title)}</h3>
+        <p>${esc(top.artist)}${top.album?' · '+esc(top.album):''}</p>
+        <button class="btn-primary" data-play="${top.id}" data-ctx='${JSON.stringify(allTracks.map(t=>t.id))}'>${I.play} Play</button></div>
       </article></section>` : ''}
-    ${r.tracks.length ? `<section class="result-group"><div class="section-head"><h2>Songs</h2></div>
-      <div class="tracklist">${r.tracks.map((t,i)=>trackRowHTML(t,i,r.tracks.map(x=>x.id))).join('')}</div></section>` : ''}
-    ${r.artists.length ? `<section class="result-group"><div class="section-head"><h2>Artists</h2></div>
+    ${allTracks.length ? `<section class="result-group"><div class="section-head"><h2>Songs</h2></div>
+      <div class="tracklist">${allTracks.slice(0,20).map((t,i)=>trackRowHTML(t,i,allTracks.map(x=>x.id))).join('')}</div></section>` : ''}
+    ${r&&r.artists.length ? `<section class="result-group"><div class="section-head"><h2>Artists</h2></div>
       <div class="hscroll">${r.artists.map(a=>cardHTML(a,'artist')).join('')}</div></section>` : ''}
-    ${[...r.albums,...r.playlists].length ? `<section class="result-group"><div class="section-head"><h2>Albums & Playlists</h2></div>
+    ${r&&(r.albums.length||r.playlists.length) ? `<section class="result-group"><div class="section-head"><h2>Albums & Playlists</h2></div>
       <div class="grid-cards">${[...r.albums,...r.playlists].map(c=>cardHTML(c, c.type)).join('')}</div></section>`:''}`;
 }
 
