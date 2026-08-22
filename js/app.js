@@ -437,6 +437,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load live catalog (iTunes-backed) then refresh home
   loadLive().then(ok => {
     if (ok && ['home',''].includes(Router.current)) Router.render();
+    // Then layer in full-length YouTube songs
+    loadYouTube('trending').then(list => {
+      if (list.length) {
+        LIVE.youtube = list;
+        if (['home',''].includes(Router.current)) Router.render();
+      }
+    });
   });
 
   if ('serviceWorker' in navigator && location.protocol==='https:') {

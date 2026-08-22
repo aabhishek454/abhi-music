@@ -50,12 +50,21 @@ const Player = {
     const t = MusicService.getTrack(id);
     if (!t) return;
     clearInterval(this._sim);
-    if (t.preview || t.src) {
-      AudioEngine.el.src = t.preview || t.src;
-      AudioEngine.el.play().catch(() => { PlayerState.playing = true; UI.onPlayState(); });
+    if (t.youtubeId) {
+      // Full song via YouTube IFrame API
+      PlayerState.playing = true;
+      UI.onPlayState();
+      playViaYouTube(t.youtubeId, state => {
+        if (state === 0) Player.next();               // ended
+        if (state === 1) { PlayerState.playing = true; UI.onPlayState(); }
+        if (state === 2) { PlayerState.playing = false; UI.onPlayState(); }
+      }).then(ok => { if (!ok) { UI.toast('YouTube unavailable — trying preview…'); this._playPreview(t); } });
+      this._ytTick(t);
+    } else if (t.preview || t.src) {
+      this._playPreview(t);
     } else {
       this._simulate(t); // fallback for local demo tracks
-      PlayerState.playing = !PlayerState.playing ?? true;
+      PlayerState.playing = true;
     }
     Player.addRecent(id);
     UI.renderPlayer();
@@ -63,6 +72,22 @@ const Player = {
     UI.renderMini();
     UI.applyAmbient(t);
     document.title = `${t.title} · ${t.artist} — ABHI MUSIC`;
+  },
+
+  _playPreview(t) {
+    AudioEngine.el.src = t.preview || t.src;
+    AudioEngine.el.play().catch(() => { PlayerState.playing = true; UI.onPlayState(); });
+  },
+
+  _ytTick(t) {
+    // progress from YT player
+    clearInterval(this._ytTimer);
+    this._ytTimer = setInterval(() => {
+      if (!PlayerState.playing || !_ytPlayer || !_ytPlayer.getCurrentTime) return;
+      try {
+        UI.onTime(_ytPlayer.getCurrentTime(), _ytPlayer.getDuration() || t.dur);
+      } catch {}
+    }, 500);
   },
 
   _simulate(t) {
@@ -95,6 +120,11 @@ const Player = {
     }
     if (AudioEngine.el && AudioEngine.el.src) {
       PlayerState.playing ? AudioEngine.el.pause() : AudioEngine.el.play().catch(()=>{});
+    } else if (_ytPlayer && _ytPlayer.getPlayerState) {
+      try {
+        const s = _ytPlayer.getPlayerState();
+        (s === 1) ? _ytPlayer.pauseVideo() : _ytPlayer.playVideo();
+      } catch {}
     } else {
       PlayerState.playing = !PlayerState.playing;
     }

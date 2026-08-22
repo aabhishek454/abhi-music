@@ -3,7 +3,7 @@
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* LIVE — remote tracks fetched from /api (iTunes-backed) */
-const LIVE = { trending:[], bollywood:[], punjabi:[], arijit:[], diljit:[], chill:[] };
+const LIVE = { trending:[], bollywood:[], punjabi:[], arijit:[], diljit:[], chill:[], youtube:[] };
 function registerRemote(tracks) {
   tracks.forEach(t => window.REMOTE_INDEX.set(t.id, t));
 }
@@ -125,6 +125,12 @@ function viewHome() {
     ${live?'':`<section class="section">${sectionHead('New Releases')}
       <div class="hscroll">${MusicService.newReleases().slice(0,8).map(c=>cardHTML(c)).join('')}</div>
     </section>`}
+
+    <section class="section">${sectionHead('Full Songs — YouTube', '')}
+      <div class="tracklist" id="ytSection">${LIVE.youtube.length
+        ? LIVE.youtube.map((t,i)=>trackRowHTML(t,i,LIVE.youtube.map(x=>x.id))).join('')
+        : '<div class="skeleton" style="height:200px;border-radius:var(--r-large)"></div>'}</div>
+    </section>
 
     <section class="section">${sectionHead('Moods & Energy')}
       <div class="moods-grid">${MOODS.slice(0,8).map(moodTile).join('')}</div>
