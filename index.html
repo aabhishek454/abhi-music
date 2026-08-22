@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ABHI MUSIC — Your Personal Music Universe</title>
+  <meta name="description" content="A premium liquid-glass music streaming experience.">
+  <meta name="theme-color" content="#050507">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/player.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+
+  <div id="app">
+    <!-- SIDEBAR (desktop) -->
+    <aside class="sidebar glass" aria-label="Main navigation">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-name">ABHI<em>MUSIC</em></span>
+      </div>
+      <nav class="nav-group" id="sidebarNav"></nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main" id="mainView"></main>
+
+    <!-- PLAYER (desktop) -->
+    <footer class="player glass-elevated" id="player" aria-label="Music player"></footer>
+  </div>
+
+  <!-- MOBILE MINI PLAYER -->
+  <div class="miniplayer glass-elevated mobile-only" id="miniplayer"></div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="bottom-nav glass mobile-only" id="bottomNav" aria-label="Mobile navigation"></nav>
+
+  <!-- QUEUE PANEL -->
+  <div class="queue-panel glass-elevated" id="queuePanel"></div>
+
+  <!-- NOW PLAYING -->
+  <div class="nowplaying" id="nowplaying" role="dialog" aria-label="Now playing"></div>
+
+  <script src="/js/icons.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/player.js"></script>
+  <script src="/js/views.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
