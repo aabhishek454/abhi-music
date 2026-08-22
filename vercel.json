@@ -1,22 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "public/**", "use": "@vercel/static" },
-    { "src": "*.html", "use": "@vercel/static" },
-    { "src": "*.css", "use": "@vercel/static" },
-    { "src": "*.js", "use": "@vercel/static" },
-    { "src": "*.svg", "use": "@vercel/static" },
-    { "src": "*.webmanifest", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/search", "dest": "/api/search.js" },
-    { "src": "/api/discover", "dest": "/api/discover.js" },
-    { "src": "/api/youtube", "dest": "/api/youtube.js" },
-    { "src": "/api/lyrics", "dest": "/api/lyrics.js" },
-    { "src": "/abhi-3.0.css", "dest": "/abhi-3.0.css" },
-    { "src": "/abhi-3.0.js", "dest": "/abhi-3.0.js" },
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/(.*)", "dest": "/$1" }
+  "cleanUrls": false,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
   ]
 }
